@@ -32,8 +32,8 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
     
     // build priority:
     // 1. always harvesters, 2 at least 1 upgrader, 3 repairer, 4 builder
-    const roomHarvesters = _.filter(harvesters, (creep) => creep.room.name === spawn.room.name);
-    if (roomHarvesters.length < 4) {
+    const roomHarvesters = _.filter(harvesters, (creep) => creep.memory.home_room === spawn.room.name);
+    if (roomHarvesters.length < 8) {
         roleHarvester.create_creep(spawn);
     } else {
         const roomUpgraders = _.filter(upgraders, (creep) => creep.room.name == spawn.room.name);
@@ -44,7 +44,7 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
             return;
         }
         // Now we want to see what percent of everything else is available and spawn accordingly
-        const upgraderPer = roomUpgraders.length / 9;
+        const upgraderPer = roomUpgraders.length / 12;
         const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
         const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
         const scountPerr = scouts.length / 1;

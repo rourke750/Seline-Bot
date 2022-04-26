@@ -79,9 +79,43 @@ var utils = {
         if (sources.length == 0) {
             //todo oof not good
             // todo check if energy tab has anything and if it does grab that room and iterate through
-            console.log('herm')
-            this.cleanup_move_to(creep)
-            return false
+            //console.log('herm')
+            if (Memory.flags.energy != null && Memory.flags.energy.roomName != null && creep.memory.home_room != null) {
+                //return false
+                // there is a flag set let's go get that energy
+                const otherRoomSources = Memory.rooms[Memory.flags.energy.roomName].sources;
+                for (const oK in otherRoomSources) {
+                    const oV = otherRoomSources[oK];
+                    
+                    const aSource = Game.getObjectById(oK) // let's see if we can get the source, if we cant it means we dont have vision
+                    let hasEnergy = true;
+                    let meetsEnergy = true;
+                    if (aSource != null) {
+                        // we have the source we can filter better
+                        hasEnergy = aSource.energy > 0;
+                        meetsEnergy = oV.totalEnergyWant + energyRequirement < aSource.energy;
+                    } 
+                    
+                    if (hasEnergy && meetsEnergy && Object.keys(oV.creeps).length < 4) {
+                        // we meet all the criteria lets send them off
+                        oV.totalEnergyWant += energyRequirement;
+                        creep.memory.destId = oK;
+                        creep.memory.destLoc = {
+                            x : oV.x,
+                            y : oV.y,
+                            roomName : Memory.flags.energy.roomName
+                        };
+                        //creep.memory.destLoc.
+                        //creep.memory.destLoc.
+                        //creep.memory.destLoc.;
+                        return true;
+                    }
+                }
+                
+            } else {
+                this.cleanup_move_to(creep)
+                return false
+            }
         } else {
             const source = sources[Math.floor(Math.random() * sources.length)];
             source.room.memory.sources[source.id].totalEnergyWant += energyRequirement;
@@ -106,14 +140,15 @@ var utils = {
         const position = creep.memory.destLoc;
         const destId = creep.memory.destId;
         
-        //if (source != null && position.roomName != creep.room.name) {
-        //    console.log('harvest huh ' + creep.name + ' ' + source.pos.x + ' ' + source.pos.y + ' ' + source.pos.roomName)
+        //if (position == null) {
+        //    creep.memory.destId = null;
         //}
         
-        if (creep.memory.current_path == null || creep.memory.current_path == undefined) {
-            creep.memory.current_path = Room.serializePath(creep.pos.findPathTo(position.x, position.y, this.movement_options));
-        }
         
+        //if (creep.memory.current_path == null || creep.memory.current_path == undefined) {
+        //    creep.memory.current_path = Room.serializePath(creep.pos.findPathTo(position.x, position.y, this.movement_options));
+        //}
+        //console.log(Memory.rooms[position.roomName].sources[destId] + ' ' + position.roomName + ' ' + destId + ' ' + creep.name)
         if (Memory.rooms[position.roomName].sources[destId].creeps[creep.name] == null) {
             Memory.rooms[position.roomName].sources[destId].creeps[creep.name] = {};
         }
@@ -157,7 +192,7 @@ var utils = {
         return [obj.pos.x, obj.pos.y, obj.pos.roomName];
     },
     
-    move_to: function(creep) {
+    move_to: function(creep, newRoomFunc = null) {
         // hanldes destinations even in other rooms
         const v = this.move_to_helper(creep);
         if (creep.memory.current_path == null || creep.memory.current_path == undefined) {
@@ -165,6 +200,7 @@ var utils = {
                 // not same room handle traverse room logic
                 this.initialize_traverse_rooms(creep, v[2]);
             } else {
+                // we are in the same room lets get a path
                 creep.memory.current_path = Room.serializePath(creep.pos.findPathTo(v[0], v[1], this.movement_options))
             }
         }
@@ -188,12 +224,29 @@ var utils = {
         if (creep.memory.dstRoom != undefined) {
             if (this.traverse_rooms(creep, creep.memory.destLoc.roomName)) { // if true then we have made it to the room
                 const destLoc = creep.memory.destLoc;
+                const destId = creep.memory.destId;
                 // we just arrive at the room lets cleanup
                 utils.cleanup_move_to(creep);
-                creep.memory.destLoc = destLoc;
                 // we set current path if traverserooms returns true as it returns true when its made it to the current room
-                creep.memory.current_path = Room.serializePath(creep.pos.findPathTo(v[0], v[1], this.movement_collision));
+                if (newRoomFunc != null) {
+                    // if this value is not null it means we have been provided a function for finding where to go next
+                    const target = newRoomFunc(creep);
+                    //todo target can be null if all energy null
+                    if (target == null) {
+                        // todo we want additional logic if a new target cannot be picked
+                        return
+                    }
+                    creep.memory.destId = target.id;
+                    creep.memory.destLoc = target.pos;
+                    creep.memory.current_path = Room.serializePath(creep.pos.findPathTo(target.pos.x, target.pos.y, this.movement_collision));
+                } else {
+                    // if we dont have a new roomfunc used for calculating where to go next we will instead use the saved cords for returning
+                    creep.memory.destLoc = destLoc;
+                    creep.memory.destId = destId;
+                    creep.memory.current_path = Room.serializePath(creep.pos.findPathTo(v[0], v[1], this.movement_collision));
+                }
             }
+            //console.log(creep.name + creep.pos.roomName)
         }
         
         // if this is not defined then we are traverseing the same room
@@ -201,8 +254,11 @@ var utils = {
             p = creep.memory.current_path;
         
             if (creep.fatigue == 0) {
-                creep.moveByPath(creep.memory.current_path)
+                const errCode = creep.moveByPath(creep.memory.current_path)
                 creep.memory.last_pos = creep.pos
+                if (errCode != 0) {
+                    console.log(errCode)
+                }
             }
         
             new RoomVisual(creep.room.name).poly(Room.deserializePath(creep.memory.current_path), {stroke: '#fff', strokeWidth: .15,

@@ -8,6 +8,10 @@ const pathGenerator = {
             Memory.highway = {}; // will be starting_room: {dst_room: [starting room pos, Pathfinder path]}
         }
         
+        if (Memory.costMatrix == null) {
+            Memory.costMatrix = {};
+        }
+        
         if (!(pos.roomName in Memory.highway)) {
             Memory.highway[pos.roomName] = {}
         }
@@ -21,7 +25,17 @@ const pathGenerator = {
         
         // We need to create one, in future will precalculate this
         // lets take the creep position and then from that
-        const v = PathFinder.search(pos, new RoomPosition(23, 23, dstRoom))
+        const v = PathFinder.search(pos, new RoomPosition(23, 23, dstRoom),
+            {
+                plainCost: 2,
+                swampCost: 10,
+                roomCallback: function(roomName) {
+                    if (roomName in Memory.costMatrix)
+                        return PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
+                    return null;
+                }
+            }
+        )
         
         // calculate start of highway
         var startPos = 0;
@@ -58,7 +72,11 @@ const pathGenerator = {
             }
             
             Memory.highway[pos.roomName][dstRoom].paths = serializedRoomPaths;
-            
+            Memory.highway[pos.roomName][dstRoom].cost = v.cost;
+            // set first position in the destination
+            Memory.highway[pos.roomName][dstRoom].end = v.path[endPos];
+        } else {
+            Memory.highway[pos.roomName][dstRoom].end = v.path[startPos + 1];
         }
         return Memory.highway[pos.roomName][dstRoom];
     },
@@ -118,6 +136,13 @@ const pathGenerator = {
         
         // todo in the future we will want to be able to invalidate a room
         
+        if (Memory.costMatrix == null || Memory.costMatrix == unknown) {
+            Memory.costMatrix = {};
+        }
+        
+        if (roomName in Memory.costMatrix)
+            return true
+        
         let room = Game.rooms[roomName];
         
         if (!room) return false;
@@ -136,14 +161,14 @@ const pathGenerator = {
         });
 
         // Avoid creeps in the room
-        room.find(FIND_CREEPS).forEach(function(creep) {
-          costs.set(creep.pos.x, creep.pos.y, 0xff);
-        });
+        //room.find(FIND_CREEPS).forEach(function(creep) {
+        //  costs.set(creep.pos.x, creep.pos.y, 0xff);
+        //});
 
         if (Memory.costMatrix == null || Memory.costMatrix == unknown) {
             Memory.costMatrix = {};
         }
-        Memory.costMatrix[roomName] = costs;
+        Memory.costMatrix[roomName] = costs.serialize();
         return true;
     },
 };

@@ -15,6 +15,15 @@ var roleHarvester = {
         
     },
     
+    find_closest_structure: function(creep) {
+        return creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
+                        filter: (structure) => {
+                            return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
+                                structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
+                        }
+                    });
+    },
+    
     run: function(creep) {
         if (creep.memory.collecting) {
             if (!utils.harvest_source(creep)) {
@@ -22,41 +31,55 @@ var roleHarvester = {
                 utils.cleanup_move_to(creep);
             }
         }
-        else {
-            if (creep.memory.destId == null) {
-                var targets = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
-                        filter: (structure) => {
-                            return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
-                                structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
-                        }
-                    });
-                if(targets != null) {
-                    creep.memory.destId = targets.id;
+        else { // todo get rid of this else statement
+            if (creep.memory.destId == null && creep.memory.destLoc == null) {
+                // this if statement is called immediatly a collection has just ended and we want to drop off the resources
+                // first lets check if the destination room is the same room
+                if (creep.memory.home_room != creep.pos.roomName) {
+                    // we are in a neighboring room need to return
+                    // we do not care about the location as long as we go back to the original room
+                    creep.memory.destLoc = {roomName: creep.memory.home_room};
                 } else {
-                    // all energy is full let's just move ten above the spawner
-                    
-                    var targets = creep.room.find(FIND_STRUCTURES, {
-                            filter: (structure) => {
-                                return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
-                                    structure.room.name == creep.room.name;
-                            }
-                    });
-                    creep.memory.destId = targets[Math.floor(Math.random() * targets.length)].id;
-                    //console.log('moving to random energy structure ' + creep.id + ' ' );
+                    // we are in the same room we can just find the location now
+                    var targets = this.find_closest_structure(creep);
+                    if (targets != null) {
+                        creep.memory.destId = targets.id;
+                        creep.memory.destLoc = targets.pos;
+                    } else {
+                        // all energy is full let's just move ten above the spawner
+                        
+                        var targets = creep.room.find(FIND_STRUCTURES, {
+                                filter: (structure) => {
+                                    return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
+                                        structure.room.name == creep.room.name;
+                                }
+                        });
+                        const i = Math.floor(Math.random() * targets.length);
+                        creep.memory.destId = targets[i].id;
+                        creep.memory.destLoc = targets[i].pos;
+                    }
                 }
             }
-            const dst = Game.getObjectById(creep.memory.destId);
+            
             if (creep.store.getUsedCapacity() == 0) {
                 creep.memory.collecting = true;
                 utils.cleanup_move_to(creep);
             }
             else {
-                const tErr = creep.transfer(dst, RESOURCE_ENERGY);
-                if (tErr == ERR_NOT_IN_RANGE) {
-                    utils.move_to(creep);
-                } else if (tErr == ERR_FULL) {
-                    utils.cleanup_move_to(creep);
-                    // todo sleep for x amount of time
+                if (creep.memory.dstRoom != null || creep.memory.current_path == null) {
+                    // if we are still doing the room traversal code
+                    utils.move_to(creep, this.find_closest_structure);
+                } else {
+                    // we know we are in the same room and can try transfering
+                    const dst = Game.getObjectById(creep.memory.destId);
+                    const tErr = creep.transfer(dst, RESOURCE_ENERGY);
+                    
+                    if (tErr == ERR_NOT_IN_RANGE) {
+                        utils.move_to(creep, this.find_closest_structure);
+                    } else if (tErr == ERR_FULL) {
+                        utils.cleanup_move_to(creep);
+                        // todo sleep for x amount of time
+                    }
                 }
             }
         }
@@ -65,7 +88,7 @@ var roleHarvester = {
 	create_creep: function(spawn) {
         var newName = 'Harvester' + Game.time;
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_harvester][1], newName,
-            {memory: {role: 'harvester', collecting: false}});
+            {memory: {role: 'harvester', collecting: false, home_room: spawn.room.name}});
     },
     
     upgrade: function(room) {
