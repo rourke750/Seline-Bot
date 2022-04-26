@@ -16,12 +16,25 @@ var roleHarvester = {
     },
     
     find_closest_structure: function(creep) {
-        return creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
+        const objs = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
                         filter: (structure) => {
                             return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
                                 structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
                         }
                     });
+        if (objs == null) {
+            return this.find_all_storage_structures(creep);
+        }
+        return objs;
+    },
+    
+    find_all_storage_structures: function(creep) { 
+        return creep.room.find(FIND_STRUCTURES, {
+                filter: (structure) => {
+                    return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
+                        structure.room.name == creep.room.name;
+                }
+        });
     },
     
     run: function(creep) {
@@ -49,12 +62,7 @@ var roleHarvester = {
                     } else {
                         // all energy is full let's just move ten above the spawner
                         
-                        var targets = creep.room.find(FIND_STRUCTURES, {
-                                filter: (structure) => {
-                                    return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
-                                        structure.room.name == creep.room.name;
-                                }
-                        });
+                        var targets = this.find_all_storage_structures(creep);
                         const i = Math.floor(Math.random() * targets.length);
                         creep.memory.destId = targets[i].id;
                         creep.memory.destLoc = targets[i].pos;

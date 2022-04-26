@@ -239,7 +239,7 @@ var utils = {
             const errCode = creep.moveByPath(p);
             creep.memory.last_pos = creep.pos;
             if (errCode != 0) {
-                console.log(errCode)
+                console.log('error with creep moving ' + errCode)
             }
         }
         
