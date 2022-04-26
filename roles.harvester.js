@@ -32,6 +32,7 @@ var roleHarvester = {
             }
         }
         else { // todo get rid of this else statement
+            // start of destination code
             if (creep.memory.destId == null && creep.memory.destLoc == null) {
                 // this if statement is called immediatly a collection has just ended and we want to drop off the resources
                 // first lets check if the destination room is the same room
@@ -60,18 +61,19 @@ var roleHarvester = {
                     }
                 }
             }
+            // end destination code
             
+            // check if we are out of energy if we are time to switch to collection mode
             if (creep.store.getUsedCapacity() == 0) {
                 creep.memory.collecting = true;
                 utils.cleanup_move_to(creep);
             }
             else {
-                if (creep.memory.dstRoom != null || creep.memory.current_path == null) {
-                    // if we are still doing the room traversal code
+                // we know we are in the same room and can try transfering
+                const dst = Game.getObjectById(creep.memory.destId);
+                if (dst == null) {
                     utils.move_to(creep, this.find_closest_structure);
                 } else {
-                    // we know we are in the same room and can try transfering
-                    const dst = Game.getObjectById(creep.memory.destId);
                     const tErr = creep.transfer(dst, RESOURCE_ENERGY);
                     
                     if (tErr == ERR_NOT_IN_RANGE) {
