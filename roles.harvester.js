@@ -121,6 +121,11 @@ var roleHarvester = {
         if (current_upgrade_cost > energy_available) {
             // attacked need to downgrade
             room.memory.upgrade_pos_harvester = build_creeps[build_creeps[room.memory.upgrade_pos_harvester][0] - 1][0];
+        } else if (room.energyAvailable <= current_upgrade_cost && build_creeps[room.memory.upgrade_pos_harvester][0] > 0 &&
+            _.filter(utils.get_filtered_creeps('harvester'), (creep) => creep.memory.home_room == room.name).length < 3) {
+            // todo this might be bouncing back and forth investigate
+            // we don't have any more harvesters let's try downgrade build some up and re up
+            room.memory.upgrade_pos_harvester = build_creeps[build_creeps[room.memory.upgrade_pos_harvester][0] - 1][0];
         } else if (energy_available >= current_upgrade_cost && 
             build_creeps[room.memory.upgrade_pos_harvester][0] < build_creeps.length - 1) {
             // lets see if we can upgrade

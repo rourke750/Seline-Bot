@@ -20,11 +20,12 @@ var roleBuilder = {
             progress += constructionSites[construct_id].progress;
             totalProgress += constructionSites[construct_id].progressTotal;
         }
-        const v = totalProgress-progress;
+        const v = (totalProgress-progress) / 100;
         if (v == 0) {
             return 0;
         }
-        return Math.ceil(Math.log10(v));
+        const val = Math.ceil(Math.log10(v));
+        return val;
     },
 
     /** @param {Creep} creep **/
@@ -98,7 +99,6 @@ var roleBuilder = {
             if (energy_available >= n[2]) {
                 room.memory.upgrade_pos_builder = n[0];
             }
-        
         }
     }
 };
