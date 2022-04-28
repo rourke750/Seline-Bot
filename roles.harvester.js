@@ -15,6 +15,15 @@ var roleHarvester = {
         
     },
     
+    find_all_storage_structures: function(creep) { 
+        return creep.room.find(FIND_STRUCTURES, {
+                filter: (structure) => {
+                    return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
+                        structure.room.name == creep.room.name;
+                }
+        });
+    },
+    
     find_closest_structure: function(creep) {
         const objs = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
                         filter: (structure) => {
@@ -23,18 +32,16 @@ var roleHarvester = {
                         }
                     });
         if (objs == null) {
-            return this.find_all_storage_structures(creep);
-        }
-        return objs;
-    },
-    
-    find_all_storage_structures: function(creep) { 
-        return creep.room.find(FIND_STRUCTURES, {
+            const targets = creep.room.find(FIND_STRUCTURES, {
                 filter: (structure) => {
                     return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
                         structure.room.name == creep.room.name;
                 }
-        });
+            });
+            const i = Math.floor(Math.random() * targets.length);
+            return targets[i];
+        }
+        return objs;
     },
     
     run: function(creep) {
@@ -59,9 +66,9 @@ var roleHarvester = {
                     if (targets != null) {
                         creep.memory.destId = targets.id;
                         creep.memory.destLoc = targets.pos;
+                        //console.log(targets)
                     } else {
                         // all energy is full let's just move ten above the spawner
-                        
                         var targets = this.find_all_storage_structures(creep);
                         const i = Math.floor(Math.random() * targets.length);
                         creep.memory.destId = targets[i].id;

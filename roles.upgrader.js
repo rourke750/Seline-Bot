@@ -17,6 +17,10 @@ var roleUpgrader = {
         return 2
     },
     
+    get_main_upgrader: function(creep) {
+        return Game.rooms[creep.memory.home_room].controller
+    },
+    
     run: function(creep) {
         if (creep.memory.upgrading && creep.store[RESOURCE_ENERGY] == 0) {
             creep.memory.upgrading = false;
@@ -27,19 +31,23 @@ var roleUpgrader = {
             if (!utils.harvest_source(creep)) {
                 creep.memory.upgrading = true;
                 utils.cleanup_move_to(creep);
+                creep.memory.destId = Game.rooms[creep.memory.home_room].controller.id;
             }
         }
+        if (creep.memory.home_room == null) {
+            //creep.memory.home_room = creep.room.name
+        }
         
-        if(creep.memory.upgrading && creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
-            creep.memory.destId = creep.room.controller.id;
-            utils.move_to(creep);
+        const upgradeErr = creep.upgradeController(Game.rooms[creep.memory.home_room].controller)
+        if(creep.memory.upgrading && upgradeErr == ERR_NOT_IN_RANGE) {
+            utils.move_to(creep, this.get_main_upgrader);
         }
 	},
 	
 	create_creep: function(spawn) {
         var newName = 'Upgrader' + Game.time;
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_upgrader][1], newName,
-            {memory: {role: 'upgrader', upgrading: false}}); // , home_room: spawn.room.name
+            {memory: {role: 'upgrader', upgrading: false, home_room: spawn.room.name}}); 
     },
     
     upgrade: function(room) {

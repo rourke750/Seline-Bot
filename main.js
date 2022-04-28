@@ -2,6 +2,7 @@ const roleHarvester = require('roles.harvester');
 const roleUpgrader = require('roles.upgrader');
 const roleBuilder = require('roles.builder');
 const roleRepairer = require('roles.repairer');
+const roleSmartHarvester = require('roles.smart_harvester');
 
 const militaryScout = require('military.scout');
 
@@ -16,7 +17,8 @@ const creepMapping = {
     'upgrader' : roleUpgrader,
     'builder' : roleBuilder,
     'repairer' : roleRepairer,
-    'scout' : militaryScout
+    'scout' : militaryScout,
+    'smartHarvester' : roleSmartHarvester 
 } 
 
 profiler.enable();
@@ -24,7 +26,7 @@ profiler.enable();
 // todo make similar actors do same actions
 //todo check if a creep is idle
 
-function handle_build_order(spawn, harvesters, upgraders, builders, repairers, scouts) {
+function handle_build_order(spawn, harvesters, upgraders, builders, repairers, scouts, smartHarvesters) {
     // test code for logging
     // todo try get cords for coordinator in another room that i dont have vision using terrain scan
     //const flag = Game.flags['Capture']
@@ -36,9 +38,10 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
     if (roomHarvesters.length < 8) {
         roleHarvester.create_creep(spawn);
     } else {
-        const roomUpgraders = _.filter(upgraders, (creep) => creep.room.name == spawn.room.name);
+        const roomUpgraders = _.filter(upgraders, (creep) => creep.memory.home_room == spawn.room.name);
         const roomBuilders = _.filter(builders, (creep) => creep.room.name == spawn.room.name);
         const roomRepairers = _.filter(repairers, (creep) => creep.room.name == spawn.room.name);
+        const roomSmartHarvesters = _.filter(smartHarvesters, (creep) => creep.room.name == spawn.room.name);
         if (roomUpgraders.length == 0) {
             roleUpgrader.create_creep(spawn);
             return;
@@ -48,16 +51,16 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
         const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
         const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
         const scountPerr = scouts.length / 1;
+        const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / roleSmartHarvester.get_harvest_count(spawn.room)));
         
         const nextCreate = [
             [upgraderPer, roleUpgrader],
             [buildersPer, roleBuilder],
             [repairerPer, roleRepairer]//,
 //            [scountPerr, militaryScout]
+//            [smartHarvesterPerr, roleSmartHarvester]
         ];
         nextCreate.sort(function(a, b) {return a[0] - b[0]});
-        //console.log('room ' + spawn.room.name+' num '+repairerPer + ' exist ' + roomRepairers.length + ' want ' + roleRepairer.get_harvest_count(spawn.room))
-        //console.log(roleBuilder.get_harvest_count(spawn.room), + ' ' + buildersPer)
         if (nextCreate[0][0] < 1) {
             nextCreate[0][1].create_creep(spawn);
         }
@@ -73,14 +76,11 @@ function handleFlags() {
     }
     for (const k in Game.flags) {
         const v = Game.flags[k];
-        if (!(k in Memory.flags)) {
-            if (k.startsWith('Energy')) {
-                // todo come up with something clever here so we dont have to iterate so much
-                // we found a destination
-                Memory.flags.energy = v.pos;
-            }
+        if (k.startsWith('Energy')) {
+            Memory.flags.energy[v.pos.roomName] = true;
         }
     }
+    //todo remove flags that are no longer there
 }
 
 module.exports.loop = function () {
@@ -94,6 +94,7 @@ module.exports.loop = function () {
         const builders = _.filter(Game.creeps, (creep) => creep.memory.role == 'builder');
         const repairers = _.filter(Game.creeps, (creep) => creep.memory.role == 'repairer');
         const scouts = _.filter(Game.creeps, (creep) => creep.memory.role == 'scout');
+        const smartHarvesters = _.filter(Game.creeps, (creep) => creep.memory.role == 'smartHarvester');
         
         for (var name in Game.rooms) {
             const room = Game.rooms[name];
@@ -126,7 +127,7 @@ module.exports.loop = function () {
                 let totalRequest = 0;
                 for (const c in room.memory.sources[source.id].creeps) {
                     const v = room.memory.sources[source.id].creeps[c];
-                    if (Game.time > v.lastTicked + 1) {
+                    if (Game.time > v.lastTicked + 3) {
                         delete room.memory.sources[source.id].creeps[c];
                     } else {
                         if (Game.creeps[c] != undefined) {
@@ -149,7 +150,7 @@ module.exports.loop = function () {
             //todo come up with way to figure out if builders are needed and how many
             //todo for sources figure out ticks to regeneration who is traveling and then do stuff based on it ie go to others
             
-            handle_build_order(spawn, harvesters, upgraders, builders, repairers, scouts);
+            handle_build_order(spawn, harvesters, upgraders, builders, repairers, scouts, smartHarvesters);
             
             if (spawn.spawning) { 
                 var spawningCreep = Game.creeps[spawn.spawning.name];
