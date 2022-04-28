@@ -86,7 +86,7 @@ var utils = {
                         filter: (source) => {
                             return source.energy > 0 && 
                             source.room.memory.sources[source.id].totalEnergyWant + energyRequirement < source.energy &&
-                            Object.keys(source.room.memory.sources[source.id].creeps).length < 4;
+                            Object.keys(source.room.memory.sources[source.id].creeps).length < source.room.memory.sources[source.id].maxCreeps.maxCount;
                         }
                 });
         if (sources.length == 0) {
@@ -112,13 +112,18 @@ var utils = {
                             meetsEnergy = oV.totalEnergyWant + energyRequirement < aSource.energy;
                         } 
                         
-                        if (hasEnergy && meetsEnergy && Object.keys(oV.creeps).length < 4) {
+                        if (hasEnergy && meetsEnergy && Object.keys(oV.creeps).length < oV.maxCreeps.maxCount) {
                             // we meet all the criteria lets send them off
                             oV.totalEnergyWant += energyRequirement;
                             creep.memory.destId = oK;
+                            const memoryPosition = oV.maxCreeps.positions.pop();
+                            if (oV.creeps[creep.name] == null) {
+                                oV.creeps[creep.name] = {};
+                            }
+                            oV.creeps[creep.name].claimedPos = memoryPosition;
                             creep.memory.destLoc = {
-                                x : oV.x,
-                                y : oV.y,
+                                x : memoryPosition[0],
+                                y : memoryPosition[1],
                                 roomName : currentRoomName
                             };
                             return true;
@@ -132,7 +137,13 @@ var utils = {
             const source = sources[Math.floor(Math.random() * sources.length)];
             source.room.memory.sources[source.id].totalEnergyWant += energyRequirement;
             creep.memory.destId = source.id;
-            creep.memory.destLoc = source.pos;
+            // for the destLoc we are actually going to use one of the available spaces
+            const memoryPosition = source.room.memory.sources[source.id].maxCreeps.positions.pop();
+            if (source.room.memory.sources[source.id].creeps[creep.name] == null) {
+                source.room.memory.sources[source.id].creeps[creep.name] = {};
+            }
+            source.room.memory.sources[source.id].creeps[creep.name].claimedPos = memoryPosition;
+            creep.memory.destLoc = new RoomPosition(memoryPosition[0], memoryPosition[1], source.room.name);  //source.pos;
             return true;
         }
     },
@@ -151,6 +162,10 @@ var utils = {
         
         const position = creep.memory.destLoc;
         const destId = creep.memory.destId;
+        //if (position == null) {
+        //    creep.memory.destLoc = null
+        //    creep.memory.destId = null
+        //}
         if (Memory.rooms[position.roomName].sources[destId].creeps[creep.name] == null) {
             Memory.rooms[position.roomName].sources[destId].creeps[creep.name] = {};
         }

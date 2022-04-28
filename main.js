@@ -22,6 +22,10 @@ const creepMapping = {
 } 
 
 profiler.enable();
+utils.move_to = profiler.registerFN(utils.move_to, 'utils.move_to');
+utils.harvest_source = profiler.registerFN(utils.harvest_source, 'utils.harvest_source')
+utils.find_source = profiler.registerFN(utils.find_source, 'utils.find_source')
+
 //todo make each creep find the cloest energy first 
 // todo make similar actors do same actions
 //todo check if a creep is idle
@@ -124,11 +128,30 @@ function loopRooms() {
                 room.memory.sources[source.id].x = source.pos.x;
                 room.memory.sources[source.id].y = source.pos.y;
             }
+
+            if (room.memory.sources[source.id].maxCreeps == null) {
+                // let's try find the max creeps we can support
+                const a = room.lookAtArea(source.pos.y-1, source.pos.x-1, source.pos.y+1, source.pos.x+1, true);
+                count = 0
+                positions = [];
+                for (const aK in a) {
+                    const aV = a[aK];
+                    if (aV.type == 'terrain' && (aV.terrain == 'plain' || aV.terrain == 'swamp')) {
+                        count += 1;
+                        positions.push([aV.x, aV.y])
+                    }
+                }
+                room.memory.sources[source.id].maxCreeps = {positions: positions, maxCount: count};
+            }
             
             let totalRequest = 0;
             for (const c in room.memory.sources[source.id].creeps) {
                 const v = room.memory.sources[source.id].creeps[c];
-                if (Game.time > v.lastTicked + 3) {
+                if (v.lastTicked == null) {
+                    delete room.memory.sources[source.id].creeps[c];
+                } else if (Game.time > v.lastTicked + 3) {
+                    if (room.memory.sources[source.id].creeps[c].claimedPos != null) 
+                        room.memory.sources[source.id].maxCreeps.positions.push(room.memory.sources[source.id].creeps[c].claimedPos);
                     delete room.memory.sources[source.id].creeps[c];
                 } else {
                     if (Game.creeps[c] != undefined) {

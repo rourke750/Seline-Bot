@@ -28,13 +28,17 @@ var roleSmartHarvester = {
     },
     
     run: function(creep) {
-        
+        // check if we have a source claimed
+        if (!creep.memory.claimed) {
+            // no source claimed
+        }
+        // first thing we want to do is try claim a source that will only be used by this harvester
     },
 	
 	create_creep: function(spawn) {
         var newName = 'Smart-Harvester' + Game.time;
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_smart_harvester][1], newName,
-            {memory: {role: 'smartHarvester', collecting: false, home_room: spawn.room.name}});
+            {memory: {role: 'smartHarvester', collecting: false, claimed: false, home_room: spawn.room.name}});
     },
     
     upgrade: function(room) {
