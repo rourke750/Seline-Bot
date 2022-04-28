@@ -181,6 +181,12 @@ var utils = {
         }
         
         const source = Game.getObjectById(creep.memory.destId);
+
+        if (creep.pos.x != creep.memory.destLoc.x && creep.pos.y != creep.memory.destLoc.y) {
+            // we harvested but we are not in the right spot lets keep moving
+            this.move_to(creep);
+            return true;
+        }
         
         var hErr = creep.harvest(source);
         
@@ -202,7 +208,7 @@ var utils = {
             //console.log('harvest source error no body parts??? ' + JSON.stringify(creep.body));
         } else if (hErr != 0) {
             console.log('harvest source error ' + hErr + ' ' +creep.id)
-        } 
+        }
         
         return true;
     },
@@ -236,6 +242,8 @@ var utils = {
             && creep.fatigue == 0) {
             //todo come back and come up with something clever like making this try move out the way and then go back
             // this will be the highest cpu stuff
+
+            //todo get rid of below code and have them move the creep over
             
             if (v[2] != creep.pos.roomName) {
                 
