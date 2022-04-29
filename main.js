@@ -141,17 +141,17 @@ function loopRooms() {
                         positions.push([aV.x, aV.y])
                     }
                 }
-                room.memory.sources[source.id].maxCreeps = {positions: positions, maxCount: count};
+                room.memory.sources[source.id].maxCreeps = {positions: positions, maxCount: count, occupied: new Array(count).fill(0)};
             }
             
             let totalRequest = 0;
             for (const c in room.memory.sources[source.id].creeps) {
                 const v = room.memory.sources[source.id].creeps[c];
                 if (v.lastTicked == null) {
+                    room.memory.sources[source.id].maxCreeps.occupied[v.maxCreepsIndexPosition] = 0;
                     delete room.memory.sources[source.id].creeps[c];
                 } else if (Game.time > v.lastTicked + 3) {
-                    if (room.memory.sources[source.id].creeps[c].claimedPos != null) 
-                        room.memory.sources[source.id].maxCreeps.positions.push(room.memory.sources[source.id].creeps[c].claimedPos);
+                    room.memory.sources[source.id].maxCreeps.occupied[v.maxCreepsIndexPosition] = 0;
                     delete room.memory.sources[source.id].creeps[c];
                 } else {
                     if (Game.creeps[c] != undefined) {
@@ -204,9 +204,10 @@ module.exports.loop = function () {
     
     profiler.wrap(function() {
         // iterate through flags and pull out details
-        initialize()
+        initialize();
         
         loopRooms();
+        //return
         
         loopSpawns();
         

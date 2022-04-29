@@ -115,17 +115,29 @@ var utils = {
                         if (hasEnergy && meetsEnergy && Object.keys(oV.creeps).length < oV.maxCreeps.maxCount) {
                             // we meet all the criteria lets send them off
                             oV.totalEnergyWant += energyRequirement;
-                            creep.memory.destId = oK;
-                            const memoryPosition = oV.maxCreeps.positions.pop();
+
+                            // for the destLoc we are actually going to use one of the available spaces
+                            const memoryPosition = oV.maxCreeps.positions;
+                            const occupiedPosition = oV.maxCreeps.occupied;
+
+                            let indexPosition = -1;
+                            for (const mK in memoryPosition) {
+                                if (occupiedPosition[mK] == 0) {
+                                    indexPosition = mK;
+                                    break
+                                }
+                            }
                             if (oV.creeps[creep.name] == null) {
                                 oV.creeps[creep.name] = {};
                             }
-                            oV.creeps[creep.name].claimedPos = memoryPosition;
+                            oV.creeps[creep.name].maxCreepsIndexPosition = indexPosition;
+                            oV.maxCreeps.occupied[indexPosition] = 1;
                             creep.memory.destLoc = {
-                                x : memoryPosition[0],
-                                y : memoryPosition[1],
+                                x : memoryPosition[indexPosition][0],
+                                y : memoryPosition[indexPosition][1],
                                 roomName : currentRoomName
                             };
+                            creep.memory.destId = oK;
                             return true;
                         }
                     }
@@ -136,14 +148,25 @@ var utils = {
         } else {
             const source = sources[Math.floor(Math.random() * sources.length)];
             source.room.memory.sources[source.id].totalEnergyWant += energyRequirement;
-            creep.memory.destId = source.id;
             // for the destLoc we are actually going to use one of the available spaces
-            const memoryPosition = source.room.memory.sources[source.id].maxCreeps.positions.pop();
+            const maxCreeps = source.room.memory.sources[source.id].maxCreeps;
+            const memoryPosition = maxCreeps.positions;
+            const occupiedPosition = maxCreeps.occupied;
+            // todo there is a chance for losing position but then it will just result in maybe doubling up, eh fine for now
+            let indexPosition = -1;
+            for (const mK in memoryPosition) {
+                if (occupiedPosition[mK] == 0) {
+                    indexPosition = mK;
+                    break
+                }
+            }
             if (source.room.memory.sources[source.id].creeps[creep.name] == null) {
                 source.room.memory.sources[source.id].creeps[creep.name] = {};
             }
-            source.room.memory.sources[source.id].creeps[creep.name].claimedPos = memoryPosition;
-            creep.memory.destLoc = new RoomPosition(memoryPosition[0], memoryPosition[1], source.room.name);  //source.pos;
+            source.room.memory.sources[source.id].creeps[creep.name].maxCreepsIndexPosition = indexPosition;
+            source.room.memory.sources[source.id].maxCreeps.occupied[indexPosition] = 1;
+            creep.memory.destLoc = new RoomPosition(memoryPosition[indexPosition][0], memoryPosition[indexPosition][1], source.room.name);  //source.pos;
+            creep.memory.destId = source.id;
             return true;
         }
     },
@@ -162,10 +185,11 @@ var utils = {
         
         const position = creep.memory.destLoc;
         const destId = creep.memory.destId;
-        //if (position == null) {
-        //    creep.memory.destLoc = null
-        //    creep.memory.destId = null
-        //}
+        if (position == null) {
+            creep.memory.destLoc = null
+            creep.memory.destId = null
+        }
+        //console.log(creep.name)
         if (Memory.rooms[position.roomName].sources[destId].creeps[creep.name] == null) {
             Memory.rooms[position.roomName].sources[destId].creeps[creep.name] = {};
         }
@@ -182,7 +206,7 @@ var utils = {
         
         const source = Game.getObjectById(creep.memory.destId);
 
-        if (creep.pos.x != creep.memory.destLoc.x && creep.pos.y != creep.memory.destLoc.y) {
+        if (creep.pos.x != creep.memory.destLoc.x || creep.pos.y != creep.memory.destLoc.y) {
             // we harvested but we are not in the right spot lets keep moving
             this.move_to(creep);
             return true;
