@@ -1,7 +1,7 @@
 var utils = require('utils');
 
-//const normal_creep = [CLAIM, MOVE, MOVE]; // 
-const normal_creep = [MOVE, MOVE]; // 300
+const normal_creep = [CLAIM, MOVE, MOVE]; // 
+//const normal_creep = [MOVE, MOVE]; // 300
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)]

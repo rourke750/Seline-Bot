@@ -19,12 +19,28 @@ const creepMapping = {
     'repairer' : roleRepairer,
     'scout' : militaryScout,
     'smartHarvester' : roleSmartHarvester 
-} 
+}
+
+const profilerMapings = {
+    'utils' : utils,
+    'roleHarvester' : roleHarvester,
+    'roleUpgrader' : roleUpgrader,
+    'roleBuilder' : roleBuilder,
+    'roleRepairer' : roleRepairer,
+    'roleSmartHarvester' : roleSmartHarvester,
+    'militaryScout' : militaryScout,
+    'construction' : console
+}
 
 profiler.enable();
-utils.move_to = profiler.registerFN(utils.move_to, 'utils.move_to');
-utils.harvest_source = profiler.registerFN(utils.harvest_source, 'utils.harvest_source')
-utils.find_source = profiler.registerFN(utils.find_source, 'utils.find_source')
+//console.log(JSON.stringify(utils.valueOf()))
+for (const pMap in profilerMapings) {
+    for (const k in profilerMapings[pMap]) {
+        if (typeof profilerMapings[pMap][k] == 'function') {
+            profilerMapings[pMap][k] = profiler.registerFN(profilerMapings[pMap][k], `${pMap}.${k}`);
+        }
+    }
+}
 
 //todo make each creep find the cloest energy first 
 // todo make similar actors do same actions
@@ -39,7 +55,7 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
     // build priority:
     // 1. always harvesters, 2 at least 1 upgrader, 3 repairer, 4 builder
     const roomHarvesters = _.filter(harvesters, (creep) => creep.memory.home_room === spawn.room.name);
-    if (roomHarvesters.length < 8) {
+    if (roomHarvesters.length < 6) {
         roleHarvester.create_creep(spawn);
         const text = `harvesters ${roomHarvesters.length}`;
         spawn.room.visual.text(
@@ -57,22 +73,24 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
             return;
         }
         // Now we want to see what percent of everything else is available and spawn accordingly
-        const upgraderPer = roomUpgraders.length / 12;
+        const upgraderPer = roomUpgraders.length / 7;
         const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
         const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
-        const scountPerr = scouts.length / 1;
+        const scountPerr = scouts.length / 2;
         const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / roleSmartHarvester.get_harvest_count(spawn.room)));
         
         const nextCreate = [
             [upgraderPer, roleUpgrader],
             [buildersPer, roleBuilder],
-            [repairerPer, roleRepairer]//,
-//            [scountPerr, militaryScout]
+            [repairerPer, roleRepairer],
+            [scountPerr, militaryScout]
 //            [smartHarvesterPerr, roleSmartHarvester]
         ];
         nextCreate.sort(function(a, b) {return a[0] - b[0]});
+        //console.log(JSON.stringify(nextCreate))
         if (nextCreate[0][0] < 1) {
-            nextCreate[0][1].create_creep(spawn);
+            if (!spawn.spawning)
+                nextCreate[0][1].create_creep(spawn);
         }
         
         const text = `up ${upgraderPer.toFixed(2)} build ${buildersPer} rep ${repairerPer}`;
@@ -100,18 +118,30 @@ function handleFlags() {
     //todo remove flags that are no longer there
 }
 
+function constructRooms(room) {
+    if ((Game.time + 20) % 1000 == 0) {
+        construction.buildSpawnCenter(room);
+        construction.build_extensions(room);
+    }
+    else if ((Game.time + 30) % 1000 == 0) {
+        construction.remove_old_roads(room);
+    }
+}
+
 function loopRooms() {
     for (var name in Game.rooms) {
         const room = Game.rooms[name];
         for (var role in creepMapping) {
             creepMapping[role].upgrade(room);
         }
-        
+        constructRooms(room);
+
         const sources = room.find(FIND_SOURCES);
         for (var id in sources) {
             const source = sources[id];
-            construction.build_roads_from_source(source);
-            construction.build_container_near_sources(source);
+            //construction.build_roads_from_source(source);
+            construction.build_link_near_sources(source);
+
             // set sources energy request to 0
             if (room.memory.sources == null) {
                 room.memory.sources = {};
@@ -156,13 +186,13 @@ function loopRooms() {
                 } else {
                     if (Game.creeps[c] != undefined) {
                         totalRequest += Game.creeps[c].store.getFreeCapacity();
+                        // let's go ahead and set this to 1 incase we had cleared it earlier or something
+                        room.memory.sources[source.id].maxCreeps.occupied[v.maxCreepsIndexPosition] = 1;
                     }
                 }
             }
             room.memory.sources[source.id].totalEnergyWant = totalRequest;
         }
-        construction.build_extensions(room);
-        construction.remove_old_roads(room);
     }
 }
 

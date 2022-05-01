@@ -45,6 +45,12 @@ var roleHarvester = {
     },
     
     run: function(creep) {
+        // check if we are out of energy if we are time to switch to collection mode
+        if (!creep.memory.collecting && creep.store.getUsedCapacity() == 0) {
+            creep.memory.collecting = true;
+            utils.cleanup_move_to(creep);
+        }
+
         if (creep.memory.collecting) {
             if (!utils.harvest_source(creep)) {
                 creep.memory.collecting = false;
@@ -78,25 +84,19 @@ var roleHarvester = {
             }
             // end destination code
             
-            // check if we are out of energy if we are time to switch to collection mode
-            if (creep.store.getUsedCapacity() == 0) {
-                creep.memory.collecting = true;
-                utils.cleanup_move_to(creep);
-            }
-            else {
-                // we know we are in the same room and can try transfering
-                const dst = Game.getObjectById(creep.memory.destId);
-                if (dst == null) {
+            
+            // we know we are in the same room and can try transfering
+            const dst = Game.getObjectById(creep.memory.destId);
+            if (dst == null) {
+                utils.move_to(creep, this.find_closest_structure);
+            } else {
+                const tErr = creep.transfer(dst, RESOURCE_ENERGY);
+                
+                if (tErr == ERR_NOT_IN_RANGE) {
                     utils.move_to(creep, this.find_closest_structure);
-                } else {
-                    const tErr = creep.transfer(dst, RESOURCE_ENERGY);
-                    
-                    if (tErr == ERR_NOT_IN_RANGE) {
-                        utils.move_to(creep, this.find_closest_structure);
-                    } else if (tErr == ERR_FULL) {
-                        utils.cleanup_move_to(creep);
-                        // todo sleep for x amount of time
-                    }
+                } else if (tErr == ERR_FULL) {
+                    utils.cleanup_move_to(creep);
+                    // todo sleep for x amount of time
                 }
             }
         }
@@ -105,7 +105,7 @@ var roleHarvester = {
 	create_creep: function(spawn) {
         var newName = 'Harvester' + Game.time;
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_harvester][1], newName,
-            {memory: {role: 'harvester', collecting: false, home_room: spawn.room.name}});
+            {memory: {role: 'harvester', collecting: true, home_room: spawn.room.name}});
     },
     
     upgrade: function(room) {

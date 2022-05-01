@@ -29,16 +29,41 @@ var roleSmartHarvester = {
     
     run: function(creep) {
         // check if we have a source claimed
-        if (!creep.memory.claimed) {
+        if (creep.memory.claimed_source == null) {
             // no source claimed
+            // go through the sources and fine one and claim it even though it should already be claimed
+        } else {
+            // tell the 
         }
-        // first thing we want to do is try claim a source that will only be used by this harvester
+
+        if (!creep.memory.collecting && creep.store.getUsedCapacity() == 0) {
+            creep.memory.collecting = true;
+            utils.cleanup_move_to(creep);
+        }
+
+        if (creep.memory.collecting) {
+            if (!utils.harvest_source(creep)) {
+                creep.memory.collecting = false;
+                utils.cleanup_move_to(creep);
+            }
+        } else {
+            // transfer to container
+        }
     },
 	
 	create_creep: function(spawn) {
         var newName = 'Smart-Harvester' + Game.time;
-        spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_smart_harvester][1], newName,
-            {memory: {role: 'smartHarvester', collecting: false, claimed: false, home_room: spawn.room.name}});
+        if (spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_smart_harvester][1], newName,
+            {memory: {role: 'smartHarvester', collecting: true, claimed_source: null, home_room: spawn.room.name}}) == 0) {
+            // lets go ahead and claim a source
+            const creep = Game.creeps[newName];
+            for (const sourceId in Memory.rooms[room.name].sources) {
+                const s = Memory.rooms[room.name].sources[sourceId];
+                if (s.finished) {
+                    // todo find a source that isnt being used by another smart harvester
+                }
+            }
+        }
     },
     
     upgrade: function(room) {

@@ -127,10 +127,19 @@ var utils = {
                                     break
                                 }
                             }
+                            if (indexPosition == -1) {
+                                console.log('wtf index position -1 ' + source.id)
+                                // let's go now and clear all indexes
+                                for (const mK in memoryPosition) {
+                                    occupiedPosition[mK] = 0;
+                                }
+                                return false;
+                            }
                             if (oV.creeps[creep.name] == null) {
                                 oV.creeps[creep.name] = {};
                             }
                             oV.creeps[creep.name].maxCreepsIndexPosition = indexPosition;
+                            creep.memory.maxCreepsIndexPosition = indexPosition;
                             oV.maxCreeps.occupied[indexPosition] = 1;
                             creep.memory.destLoc = {
                                 x : memoryPosition[indexPosition][0],
@@ -160,10 +169,19 @@ var utils = {
                     break
                 }
             }
+            if (indexPosition == -1) {
+                console.log('wtf index position -1 ' + source.id)
+                // let's go now and clear all indexes
+                for (const mK in memoryPosition) {
+                    occupiedPosition[mK] = 0;
+                }
+                return false;
+            }
             if (source.room.memory.sources[source.id].creeps[creep.name] == null) {
                 source.room.memory.sources[source.id].creeps[creep.name] = {};
             }
             source.room.memory.sources[source.id].creeps[creep.name].maxCreepsIndexPosition = indexPosition;
+            creep.memory.maxCreepsIndexPosition = indexPosition;
             source.room.memory.sources[source.id].maxCreeps.occupied[indexPosition] = 1;
             creep.memory.destLoc = new RoomPosition(memoryPosition[indexPosition][0], memoryPosition[indexPosition][1], source.room.name);  //source.pos;
             creep.memory.destId = source.id;
@@ -195,8 +213,9 @@ var utils = {
         }
         
         Memory.rooms[position.roomName].sources[destId].creeps[creep.name].lastTicked = Game.time;
+        Memory.rooms[position.roomName].sources[destId].creeps[creep.name].maxCreepsIndexPosition = creep.memory.maxCreepsIndexPosition;
         if (Object.keys(Memory.rooms[position.roomName].sources[destId].creeps).length > 4) {
-            console.log(position.roomName + ' ' + destId + ' '  + Object.keys(Memory.rooms[position.roomName].sources[destId].creeps))
+            //console.log(position.roomName + ' ' + destId + ' '  + Object.keys(Memory.rooms[position.roomName].sources[destId].creeps))
         }
         
         if (position.roomName != creep.pos.roomName) {
