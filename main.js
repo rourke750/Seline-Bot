@@ -42,6 +42,8 @@ for (const pMap in profilerMapings) {
     }
 }
 
+global.utils = utils;
+
 //todo make each creep find the cloest energy first 
 // todo make similar actors do same actions
 //todo check if a creep is idle
@@ -119,9 +121,11 @@ function handleFlags() {
 }
 
 function constructRooms(room) {
+    construction.buildAuxNearSpawn(room);
     if ((Game.time + 20) % 1000 == 0) {
         construction.buildSpawnCenter(room);
         construction.build_extensions(room);
+        construction.buildAuxNearSpawn(room);
     }
     else if ((Game.time + 30) % 1000 == 0) {
         construction.remove_old_roads(room);

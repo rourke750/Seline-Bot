@@ -1,5 +1,4 @@
-const common {
-    
+const common = {
 }
 
 module.exports = common;

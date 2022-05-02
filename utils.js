@@ -5,6 +5,30 @@ let filtered_mapping = {};
 var utils = {
     movement_options: {visualizePathStyle: {stroke: '#ffffff'}, reusePath: 10, ignoreCreeps: true},
     movement_collision: {visualizePathStyle: {stroke: '#ffffff'}, reusePath: 10, ignoreCreeps: false},
+
+    buildLineDirection(x, y, dir, length) {
+        positions = []
+        for (let x = 0; x < length; x++) {
+            if (dir == 0) { // line going up
+                positions.push([x, y-(1 * x)]);
+            } else if (dir == 1) { // top right
+                positions.push([x+(1 * x), y-(1 * x)]);
+            } else if (dir == 2) { // right
+                positions.push([x+(1 * x), y]);
+            } else if (dir == 3) {// we going bottom right
+                positions.push([x+(1 * x), y+(1 * x)]);
+            } else if (dir == 4) {// bottom
+                positions.push([x, y+(1 * x)]);
+            } else if (dir == 5) {// we going bottom left
+                positions.push([x-(1 * x), y+(1 * x)]);
+            } else if (dir == 6) {// left
+                positions.push([x-(1 * x), y]);
+            } else if (dir == 3) {// top left 
+                positions.push([x-(1 * x), y-(1 * x)]);
+            }
+        }
+        return positions;
+    },
     
     get_filtered_creeps: function(role) {
         if (!(role in filtered_mapping)) {
@@ -128,12 +152,12 @@ var utils = {
                                 }
                             }
                             if (indexPosition == -1) {
-                                console.log('wtf index position -1 ' + source.id)
+                                console.log('wtf index position -1 ' + aSource.id)
                                 // let's go now and clear all indexes
                                 for (const mK in memoryPosition) {
                                     occupiedPosition[mK] = 0;
                                 }
-                                return false;
+                                continue;
                             }
                             if (oV.creeps[creep.name] == null) {
                                 oV.creeps[creep.name] = {};

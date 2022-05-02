@@ -1,7 +1,16 @@
 const utils = require('utils');
+const common = require('common');
  
 var construction = {
 
+    // build a link near the spawns and roads that are needed
+    buildAuxNearSpawn: function(room) {
+        // we want to build a link and roads around the spawn
+        if (room.memory.spawnMaster == null) {
+            return
+        }
+        room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+2).createConstructionSite(STRUCTURE_LINK)
+    },
 
     // This function handles building the spawn
     buildSpawnCenter: function(room) {
@@ -23,7 +32,6 @@ var construction = {
             spawns.push(spawn);
         }
 
-        console.log(spawns.length + ' ' + room.name)
         if (spawns.length == 1 && room.memory.spawnMaster == null) {
             room.memory.spawnMaster = spawns[0].name;
             room.memory.spawnMasterX = spawns[0].pos.x;
@@ -175,37 +183,53 @@ var construction = {
         }
         return false
     },
+
+    get_extension_positions: function(x, y, xDir, yDir) {
+        const positions = [];
+        for (var xx = 1; xx < 4; xx++) {
+            positions.push([x + (xx * xDir), y - (xx * yDir)])
+            positions.push([x + (xx * xDir), y - (xx * yDir) - (1 * yDir)])
+        }
+        positions.push([x + (4* xDir), y - (4 *yDir)])
+        positions.push([x + (5* xDir), y - (4 *yDir)])
+        positions.push([x + (5* xDir), y - (3 *yDir)])
+        for (var xx = 4; xx >= 2; xx--) {
+            positions.push([x + (xx * xDir) + (1*xDir), y - (xx * yDir) + (2*yDir)])
+            positions.push([x + (xx * xDir), y - (xx * yDir) + (2*yDir)])
+        }
+        return positions;
+    },
     
     build_extensions: function(room) {
-        return; // todo this is temp while i work on making better logic
+
+        if (!room.controller.my)
+            return;
 
         // todo build that cool design i saw 
 
         //todo use flag to premap how it will look
         var to_build = this.get_available_extentions_build(room);
+        if (to_build == 0) {
+            return;
+        }
         const x = room.memory.spawnMasterX;
         const y = room.memory.spawnMasterY;
         
-        for (var i = 0; i < to_build; i++) {
-            // select random spawn
-            var iteration = 2;
-            while (true) {
-                if (iteration > 10) {
-                    console.log('couldnt find valid extension location');
-                    break
-                }
-                // lets make a square i guess
-                for (var xx = x - iteration; xx < x + iteration; xx += 2) {
-                    for (var yy = y - iteration; yy < y + iteration; yy += 2) {
-                        var results = room.createConstructionSite(xx, yy, STRUCTURE_EXTENSION);
-                        if (this.build_exensions_success(results)) {
-                            break;
-                        }
-                    }
-                }
-                iteration += 2
+        const positions = [];
+        positions.push(...this.get_extension_positions(x, y, 1, 1))
+        positions.push(...this.get_extension_positions(x, y+2, 1, -1))
+        positions.push(...this.get_extension_positions(x, y, -1, 1))
+        positions.push(...this.get_extension_positions(x, y+2, -1, -1))
+        for (var i = 0; i < positions.length; i++) {
+            var results = room.createConstructionSite(positions[i][0], positions[i][1], STRUCTURE_EXTENSION);
+            if (results == 0) {
+                to_build--;
             }
+            if (to_build == 0) 
+                break
         }
+        //new RoomVisual(room.name).poly(positions, {stroke: '#fff', strokeWidth: .15,
+          //      opacity: .2, lineStyle: 'dashed'});
     },
     
     build_roads_from_source: function(source) {
@@ -233,7 +257,7 @@ var construction = {
             return;
         }
         
-        // build road from source to spawn and extensions
+        // build road from source to spawn
         if ((Game.time + 20) % 1000 == 0) {
             const obsticalD = {};
             for (ob in OBSTACLE_OBJECT_TYPES) {
@@ -241,7 +265,7 @@ var construction = {
             }
             const energy_storages = source.room.find(FIND_MY_STRUCTURES, {
                 filter: (structure) => {
-                    return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN);
+                    return (structure.structureType == STRUCTURE_SPAWN);
                 }
             });
             for (var j = 0; j < energy_storages.length; j++) {
