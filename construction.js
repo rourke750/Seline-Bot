@@ -7,9 +7,34 @@ var construction = {
     buildAuxNearSpawn: function(room) {
         // we want to build a link and roads around the spawn
         if (room.memory.spawnMaster == null) {
-            return
+            return;
         }
-        room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+2).createConstructionSite(STRUCTURE_LINK)
+        const linkLoc = room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+2);
+        linkLoc.createConstructionSite(STRUCTURE_LINK);
+
+        const structs = linkLoc.lookFor(LOOK_STRUCTURES);
+        let link_id = null;
+        for (const i in structs) {
+            const v = structs[i];
+            if (v.structureType == 'link') {
+                link_id = v.id;
+                break;
+            }
+        }
+        if (link_id != null) {
+            room.memory.masterLink = link_id;
+        }
+
+        // try build roads
+        // we want a diagonal up each point
+        for (let i = 1; i <= 7; i += 2) {
+            let positions = utils.buildLineDirection(room.memory.spawnMasterX, room.memory.spawnMasterY+1, i, 4)
+            for (const ii in positions) {
+                const v = positions[ii];
+                room.getPositionAt(v[0], v[1]).createConstructionSite(STRUCTURE_ROAD);
+            }
+        }
+        room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+1).createConstructionSite(STRUCTURE_ROAD);
     },
 
     // This function handles building the spawn

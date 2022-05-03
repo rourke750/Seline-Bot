@@ -13,7 +13,10 @@ const build_creeps = [
 var militaryDefender = {
     
     run: function(creep) {
-        
+        if (creep.spawning) {
+            return;
+        }
+        creep.pos.findClosestByPath(FIND_HOSTILE_CREEPS)
         
     },
 	

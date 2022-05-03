@@ -5,6 +5,7 @@ const roleRepairer = require('roles.repairer');
 const roleSmartHarvester = require('roles.smart_harvester');
 
 const militaryScout = require('military.scout');
+const militaryDefender = require('military.defender');
 
 const construction = require('construction');
 
@@ -18,7 +19,8 @@ const creepMapping = {
     'builder' : roleBuilder,
     'repairer' : roleRepairer,
     'scout' : militaryScout,
-    'smartHarvester' : roleSmartHarvester 
+    'smartHarvester' : roleSmartHarvester,
+    'defender' : militaryDefender
 }
 
 const profilerMapings = {
@@ -28,8 +30,9 @@ const profilerMapings = {
     'roleBuilder' : roleBuilder,
     'roleRepairer' : roleRepairer,
     'roleSmartHarvester' : roleSmartHarvester,
+    'militaryDefinder' : militaryDefender,
     'militaryScout' : militaryScout,
-    'construction' : console
+    'construction' : construction
 }
 
 profiler.enable();
@@ -121,7 +124,7 @@ function handleFlags() {
 }
 
 function constructRooms(room) {
-    construction.buildAuxNearSpawn(room);
+    //construction.buildAuxNearSpawn(room);
     if ((Game.time + 20) % 1000 == 0) {
         construction.buildSpawnCenter(room);
         construction.build_extensions(room);
@@ -178,6 +181,12 @@ function loopRooms() {
                 room.memory.sources[source.id].maxCreeps = {positions: positions, maxCount: count, occupied: new Array(count).fill(0)};
             }
             
+            
+            if (room.memory.sources[source.id].smartCreep != null &&
+                Game.creeps[room.memory.sources[source.id].smartCreep] == null) {
+                room.memory.sources[source.id].smartCreep = null
+            }
+
             let totalRequest = 0;
             for (const c in room.memory.sources[source.id].creeps) {
                 const v = room.memory.sources[source.id].creeps[c];

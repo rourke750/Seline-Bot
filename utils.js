@@ -8,23 +8,23 @@ var utils = {
 
     buildLineDirection(x, y, dir, length) {
         positions = []
-        for (let x = 0; x < length; x++) {
+        for (let xx = 1; xx <= length; xx++) {
             if (dir == 0) { // line going up
-                positions.push([x, y-(1 * x)]);
+                positions.push([x, y-(1 * xx)]);
             } else if (dir == 1) { // top right
-                positions.push([x+(1 * x), y-(1 * x)]);
+                positions.push([x+(1 * xx), y-(1 * xx)]);
             } else if (dir == 2) { // right
-                positions.push([x+(1 * x), y]);
+                positions.push([x+(1 * xx), y]);
             } else if (dir == 3) {// we going bottom right
-                positions.push([x+(1 * x), y+(1 * x)]);
+                positions.push([x+(1 * xx), y+(1 * xx)]);
             } else if (dir == 4) {// bottom
-                positions.push([x, y+(1 * x)]);
+                positions.push([x, y+(1 * xx)]);
             } else if (dir == 5) {// we going bottom left
-                positions.push([x-(1 * x), y+(1 * x)]);
+                positions.push([x-(1 * xx), y+(1 * xx)]);
             } else if (dir == 6) {// left
-                positions.push([x-(1 * x), y]);
-            } else if (dir == 3) {// top left 
-                positions.push([x-(1 * x), y-(1 * x)]);
+                positions.push([x-(1 * xx), y]);
+            } else if (dir == 7) {// top left 
+                positions.push([x-(1 * xx), y-(1 * xx)]);
             }
         }
         return positions;
@@ -108,9 +108,14 @@ var utils = {
         const energyRequirement = creep.store.getFreeCapacity();
         const sources = creep.room.find(FIND_SOURCES, {
                         filter: (source) => {
+                            // set up code for smart harvester
+                            if (creep.memory.role == 'smartHarvester') {
+                                return source.room.memory.sources[source.id].smartCreep == null;
+                            }
                             return source.energy > 0 && 
                             source.room.memory.sources[source.id].totalEnergyWant + energyRequirement < source.energy &&
-                            Object.keys(source.room.memory.sources[source.id].creeps).length < source.room.memory.sources[source.id].maxCreeps.maxCount;
+                            Object.keys(source.room.memory.sources[source.id].creeps).length < source.room.memory.sources[source.id].maxCreeps.maxCount
+                            && source.room.memory.sources[source.id].smartCreep == null;
                         }
                 });
         if (sources.length == 0) {
@@ -120,7 +125,8 @@ var utils = {
             const exits = Game.map.describeExits(creep.room.name);
             for (const eK in exits) {
                 const currentRoomName = exits[eK];
-                if (Memory.flags.energy != null && Memory.flags.energy[currentRoomName] != null && creep.memory.home_room != null) {
+                if (Memory.flags.energy != null && Memory.flags.energy[currentRoomName] != null && creep.memory.home_room != null && 
+                    Memory.rooms[currentRoomName] != null) {
                     //return false
                     // there is a flag set let's go get that energy
                     const otherRoomSources = Memory.rooms[currentRoomName].sources;
@@ -209,11 +215,17 @@ var utils = {
             source.room.memory.sources[source.id].maxCreeps.occupied[indexPosition] = 1;
             creep.memory.destLoc = new RoomPosition(memoryPosition[indexPosition][0], memoryPosition[indexPosition][1], source.room.name);  //source.pos;
             creep.memory.destId = source.id;
+
+            // if the creep is a smart harvester claim the source
+            if (creep.memory.role == 'smartHarvester') {
+                source.room.memory.sources[source.id].smartCreep = creep.name;
+            }
+
             return true;
         }
     },
     
-    harvest_source: function(creep) {
+    harvest_source: function(creep, findNewOnEmpty=true) {
         if (creep.spawning) {
             return true;
         }
@@ -257,14 +269,17 @@ var utils = {
         
         var hErr = creep.harvest(source);
         
-        if (hErr == ERR_NOT_ENOUGH_RESOURCES) {
+        if (hErr == ERR_NOT_ENOUGH_RESOURCES && findNewOnEmpty) {
             this.cleanup_move_to(creep);
             if (!(this.find_source(creep)) && creep.store.getFreeCapacity() != 0) {
                 // we couldn't find another source and the capacity isn't zero so lets get to work
                 return false;
             }
             return true;
+        } else if (hErr == ERR_NOT_ENOUGH_RESOURCES && !findNewOnEmpty) { // if we dont want a new source
+            return true;
         }
+
         if (hErr == ERR_NOT_IN_RANGE) {
             this.move_to(creep);
         } else if(creep.store.getFreeCapacity() == 0) {
