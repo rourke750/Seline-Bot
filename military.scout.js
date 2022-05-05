@@ -1,13 +1,17 @@
 var utils = require('utils');
 
-//const normal_creep = [CLAIM, MOVE, MOVE]; // 
-const normal_creep = [MOVE, MOVE]; // 300
+const normal_creep = [CLAIM, MOVE, MOVE]; // 
+//const normal_creep = [MOVE, MOVE]; // 300
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)]
 ]
  
 var militaryScout = {
+    get_room_controller: function(creep) {
+        return creep.room.controller;
+    },
+    
     run: function(creep) {
         // let's check if the current room is owned by us if it is we need to go elseware
         if (creep.spawning) {
@@ -16,7 +20,7 @@ var militaryScout = {
         if (creep.memory.destLoc == null) {
             found = false;
             for (var flag in Game.flags) {
-                if (flag.startsWith('Capture')) {
+                if (flag.startsWith('Reserve')) {
                     // we found a destination
                     creep.memory.destLoc = Game.flags[flag].pos;
                 }
@@ -25,18 +29,19 @@ var militaryScout = {
                 // we didn't find a flag now do something clever to see where we want to go
             }
         }
-        /*
-        if (creep.memory.reserveRoom) {
-            const reserveErr = creep.reserveController(creep.room.controller);
-            if (reserveErr == ERR_NOT_IN_RANGE) {
-                creep.moveByPath(creep.memory.destId);
-            }
-        } else {
-            const sperr = creep.moveByPath(creep.memory.destId);
-        }
-        */
         
-        utils.move_to(creep);
+        if (creep.memory.destLoc.roomName != creep.pos.roomName) {
+            utils.move_to(creep, this.get_room_controller);
+        } else {
+            const obj = Game.getObjectById(creep.memory.destId);
+            if (obj == null) {
+                utils.move_to(creep, this.get_room_controller);
+            } else {
+                if (creep.reserveController(obj) == ERR_NOT_IN_RANGE) {
+                    utils.move_to(creep, this.get_room_controller);
+                }
+            }
+        }
         
     },
 	

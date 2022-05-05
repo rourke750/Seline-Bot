@@ -1,9 +1,111 @@
 const utils = require('utils');
+const common = require('common');
  
 var construction = {
+
+    // build a link near the spawns and roads that are needed
+    buildAuxNearSpawn: function(room) {
+        // we want to build a link and roads around the spawn
+        if (room.memory.spawnMaster == null) {
+            return;
+        }
+        const linkLoc = room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+2);
+        linkLoc.createConstructionSite(STRUCTURE_LINK);
+
+        const structs = linkLoc.lookFor(LOOK_STRUCTURES);
+        let link_id = null;
+        for (const i in structs) {
+            const v = structs[i];
+            if (v.structureType == 'link') {
+                link_id = v.id;
+                break;
+            }
+        }
+        if (link_id != null) {
+            room.memory.masterLink = link_id;
+        }
+
+        // try build roads
+        // we want a diagonal up each point
+        for (let i = 1; i <= 7; i += 2) {
+            let positions = utils.buildLineDirection(room.memory.spawnMasterX, room.memory.spawnMasterY+1, i, 4)
+            for (const ii in positions) {
+                const v = positions[ii];
+                room.getPositionAt(v[0], v[1]).createConstructionSite(STRUCTURE_ROAD);
+            }
+        }
+        room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+1).createConstructionSite(STRUCTURE_ROAD);
+    },
+
+    // This function handles building the spawn
+    buildSpawnCenter: function(room) {
+        let maxSpawns = 1;
+        if (!room.controller.my) {
+            return;
+        } else if (room.controller.level == 7) {
+            maxSpawns = 2;
+        } else if (room.controller.level == 8) {
+            maxSpawns = 3;
+        }
+
+        const spawns = [];
+        for (const k in Game.spawns) {
+            const spawn = Game.spawns[k];
+            if (spawn.room.name != room.name) {
+                continue;
+            }
+            spawns.push(spawn);
+        }
+
+        if (spawns.length == 1 && room.memory.spawnMaster == null) {
+            room.memory.spawnMaster = spawns[0].name;
+            room.memory.spawnMasterX = spawns[0].pos.x;
+            room.memory.spawnMasterY = spawns[0].pos.y;
+        }
+        
+        if (spawns.length >= maxSpawns) {
+            // we have all our spawns
+            return;
+        }
+        // check if the master spawn is still there, if not rebuild it 
+        if (room.memory.spawnMaster != null && !Game.spawns[room.memory.spawnMaster]) {
+            // we are missing the master spawn rebuild it
+            const n = `${room.name}-1`;
+            room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY).createConstructionSite(STRUCTURE_SPAWN, n);
+            room.memory.spawnMaster = n;
+        }
+        const m = Game.spawns[room.memory.spawnMaster];
+        if (m == null) {
+            return
+        }
+        // check for bottom left spawn if we can build it
+        
+        if (!this.find_spawns_at_pos(room.getPositionAt(m.pos.x-1, m.pos.y+1))) { // didnt find a spawn lets build it
+            const n = `${room.name}-2`;
+            secondLocation.createConstructionSite(STRUCTURE_SPAWN, n);
+        }
+        // check for bottom right spawn if we can build it
+        if (!this.find_spawns_at_pos(room.getPositionAt(m.pos.x+1, m.pos.y+1))) { // didnt find a spawn lets build it
+            const n = `${room.name}-3`;
+            secondLocation.createConstructionSite(STRUCTURE_SPAWN, n);
+        }
+    },
+
+    find_spawns_at_pos: function(pos) {
+        const secondLocation = room.lookAt(pos);
+        for (const sL in secondLocation) {
+            const sV = secondLocation[sL];
+            if (sV.type == LOOK_STRUCTURES && sV.structure.structureType == 'spawn') {
+                return true;
+            } else if (sV.type == LOOK_CONSTRUCTION_SITES && sV.constructionSite.constructionSite.structureType == 'spawn') {
+                return true;
+            }
+        }
+        return false;
+    },
     
-    build_container_near_sources: function(source) {
-        /* goal of this method is to build a container that will match up with with a source and is close to the spawn, 
+    build_link_near_sources: function(source) {
+        /* goal of this method is to build a link that will match up with with a source and is close to the spawn, 
         then haulers can carry energy to where its needed
         */
         /*
@@ -15,7 +117,7 @@ var construction = {
         */
         //pos.createFlag();
                 
-        if (!((Game.time + 40) % 1000 == 0 && source.room.controller.level >= 4)) {
+        if (!((Game.time + 40) % 1000 == 0 && source.room.controller.level >= 6)) {
             return
         }
         
@@ -33,7 +135,7 @@ var construction = {
             Memory.rooms[source.room.name].sources[source.id].container_y).map(f => f.structureType);
         var found = false
         for (const s in structs) {
-            if (structs[s] == STRUCTURE_CONTAINER) {
+            if (structs[s] == STRUCTURE_LINK) {
                 found = true;
                 break;
             }
@@ -54,19 +156,25 @@ var construction = {
             console.log('why is spawns null ' + source.room.name + ' ' + source.id);
             return;
         }
-        const path = source.pos.findPathTo(spawns[0], utils.movement_options);
-        const pos = new RoomPosition(path[1].x, path[1].y, source.room.name);
         
-        const conErr = pos.createConstructionSite(STRUCTURE_CONTAINER)
+        const mem = Memory.rooms[source.room.name].sources[source.id];
+
+        var pos;
+        if (mem.container_x == null || mem.container_y == null) {
+            const path = source.pos.findPathTo(spawns[0], utils.movement_options);
+            pos = new RoomPosition(path[1].x, path[1].y, source.room.name);
+            mem.container_x = pos.x;
+            mem.container_y = pos.y;
+        } else {
+            pos = new RoomPosition(mem.container_x, mem.container_y, source.room.name);
+        }
+        
+        const conErr = pos.createConstructionSite(STRUCTURE_LINK)
         if (conErr != 0) {
-            console.log('failed to create construction site for container');
+            console.log('failed to create construction site for STRUCTURE_LINK ' + conErr);
             // it shouldnt create one without x, y being set as well.
             return;
         }
-        
-        const mem = Memory.rooms[source.room.name].sources[source.id];
-        mem.container_x = pos.x;
-        mem.container_y = pos.y;
         mem.finished = false;
     },
     
@@ -100,39 +208,53 @@ var construction = {
         }
         return false
     },
+
+    get_extension_positions: function(x, y, xDir, yDir) {
+        const positions = [];
+        for (var xx = 1; xx < 4; xx++) {
+            positions.push([x + (xx * xDir), y - (xx * yDir)])
+            positions.push([x + (xx * xDir), y - (xx * yDir) - (1 * yDir)])
+        }
+        positions.push([x + (4* xDir), y - (4 *yDir)])
+        positions.push([x + (5* xDir), y - (4 *yDir)])
+        positions.push([x + (5* xDir), y - (3 *yDir)])
+        for (var xx = 4; xx >= 2; xx--) {
+            positions.push([x + (xx * xDir) + (1*xDir), y - (xx * yDir) + (2*yDir)])
+            positions.push([x + (xx * xDir), y - (xx * yDir) + (2*yDir)])
+        }
+        return positions;
+    },
     
     build_extensions: function(room) {
-        return; // todo this is temp while i work on making better logic
+
+        if (!room.controller.my)
+            return;
+
+        // todo build that cool design i saw 
+
         //todo use flag to premap how it will look
         var to_build = this.get_available_extentions_build(room);
-        const spawns = room.find(FIND_MY_SPAWNS);
-        if (Game.time % 1000 != 0) {
-            return
+        if (to_build == 0) {
+            return;
         }
-        for (var i = 0; i < to_build; i++) {
-            // select random spawn
-            const spawn = spawns[Math.floor(Math.random() * spawns.length)];
-            const spawnPos = spawn.pos;
-            var x = spawnPos.x;
-            var y = spawnPos.y;
-            var iteration = 2;
-            while (true) {
-                if (iteration > 10) {
-                    console.log('couldnt find valid extension location');
-                    break
-                }
-                // lets make a square i guess
-                for (var xx = x - iteration; xx < x + iteration; xx += 2) {
-                    for (var yy = y - iteration; yy < y + iteration; yy += 2) {
-                        var results = room.createConstructionSite(xx, yy, STRUCTURE_EXTENSION);
-                        if (this.build_exensions_success(results)) {
-                            break;
-                        }
-                    }
-                }
-                iteration += 2
+        const x = room.memory.spawnMasterX;
+        const y = room.memory.spawnMasterY;
+        
+        const positions = [];
+        positions.push(...this.get_extension_positions(x, y, 1, 1))
+        positions.push(...this.get_extension_positions(x, y+2, 1, -1))
+        positions.push(...this.get_extension_positions(x, y, -1, 1))
+        positions.push(...this.get_extension_positions(x, y+2, -1, -1))
+        for (var i = 0; i < positions.length; i++) {
+            var results = room.createConstructionSite(positions[i][0], positions[i][1], STRUCTURE_EXTENSION);
+            if (results == 0) {
+                to_build--;
             }
+            if (to_build == 0) 
+                break
         }
+        //new RoomVisual(room.name).poly(positions, {stroke: '#fff', strokeWidth: .15,
+          //      opacity: .2, lineStyle: 'dashed'});
     },
     
     build_roads_from_source: function(source) {
@@ -160,7 +282,7 @@ var construction = {
             return;
         }
         
-        // build road from source to spawn and extensions
+        // build road from source to spawn
         if ((Game.time + 20) % 1000 == 0) {
             const obsticalD = {};
             for (ob in OBSTACLE_OBJECT_TYPES) {
@@ -168,7 +290,7 @@ var construction = {
             }
             const energy_storages = source.room.find(FIND_MY_STRUCTURES, {
                 filter: (structure) => {
-                    return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN);
+                    return (structure.structureType == STRUCTURE_SPAWN);
                 }
             });
             for (var j = 0; j < energy_storages.length; j++) {
@@ -197,31 +319,29 @@ var construction = {
     
     remove_old_roads: function(room) {
         // cleanup old roads that are on buildings as they are untraversable so why upkeep
-        if ((Game.time + 30) % 1000 == 0) {
-            // todo delete roads that are covering structures that cant be crossed
-            const road_paths = room.find(FIND_STRUCTURES, {
-                filter: (structure) => {
-                    return structure.structureType == STRUCTURE_ROAD;
-                }
-            });
-            
-            const obsticalD = {};
-            for (ob in OBSTACLE_OBJECT_TYPES) {
-                obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
+        // todo delete roads that are covering structures that cant be crossed
+        const road_paths = room.find(FIND_STRUCTURES, {
+            filter: (structure) => {
+                return structure.structureType == STRUCTURE_ROAD;
             }
-            for (const k in road_paths) {
-                const struct = room.lookForAt(LOOK_STRUCTURES, road_paths[k].pos.x, road_paths[k].pos.y)
-                var impassible = false;
-                if (struct.length > 1) {
-                    for (s in struct) {
-                        if (struct[s].structureType in obsticalD) {
-                            impassible = true;
-                            break;
-                        }
+        });
+        
+        const obsticalD = {};
+        for (ob in OBSTACLE_OBJECT_TYPES) {
+            obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
+        }
+        for (const k in road_paths) {
+            const struct = room.lookForAt(LOOK_STRUCTURES, road_paths[k].pos.x, road_paths[k].pos.y)
+            var impassible = false;
+            if (struct.length > 1) {
+                for (s in struct) {
+                    if (struct[s].structureType in obsticalD) {
+                        impassible = true;
+                        break;
                     }
-                    if (impassible)
-                        road_paths[k].destroy();
                 }
+                if (impassible)
+                    road_paths[k].destroy();
             }
         }
     }

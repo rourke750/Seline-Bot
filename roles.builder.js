@@ -12,7 +12,7 @@ const build_creeps = [
 
 var roleBuilder = {
     
-    get_builder_requirements: function(room){
+    get_harvest_count: function(room) {
         const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
         var progress = 0;
         var totalProgress = 0;
@@ -20,24 +20,12 @@ var roleBuilder = {
             progress += constructionSites[construct_id].progress;
             totalProgress += constructionSites[construct_id].progressTotal;
         }
-        const v = totalProgress-progress;
+        const v = (totalProgress-progress) / 100;
         if (v == 0) {
             return 0;
         }
-        return Math.ceil(Math.log10(v));
-        //console.log(constructionSites.length, ' ' + progress + ' ' + totalProgress + ' ' + (totalProgress-progress))
-        //todo come up with some inverse function where if progress is low and many construction sites request more builders
-    },
-    
-    get_harvest_count: function(room) {
-        //const build_strength = build_creeps[room.memory.upgrade_pos][3]
-        const builder_requirements = this.get_builder_requirements(room);
-        if (builder_requirements == 0) {
-            return 0;
-        }
-        const build_strength = Math.ceil(Math.log10(builder_requirements));
-        //console.log('strength ' + build_strength + ' requirements ' + builder_requirements);
-        return build_strength;
+        const val = Math.ceil(Math.log10(v));
+        return val;
     },
 
     /** @param {Creep} creep **/
@@ -111,7 +99,6 @@ var roleBuilder = {
             if (energy_available >= n[2]) {
                 room.memory.upgrade_pos_builder = n[0];
             }
-        
         }
     }
 };
