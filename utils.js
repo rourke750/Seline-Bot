@@ -237,7 +237,7 @@ var utils = {
             }
         }
         
-        const position = creep.memory.destLoc;
+        let position = creep.memory.destLoc;
         const destId = creep.memory.destId;
         if (position == null) {
             creep.memory.destLoc = null
@@ -266,6 +266,8 @@ var utils = {
             this.move_to(creep);
             return true;
         }
+        if (creep.name == 'SmartHarvester-1')
+                console.log('wtf?')
         
         var hErr = creep.harvest(source);
         

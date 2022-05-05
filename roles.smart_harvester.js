@@ -28,12 +28,15 @@ var roleSmartHarvester = {
     },
     
     run: function(creep) {
+        //return
         if (!creep.memory.collecting && creep.store.getUsedCapacity() == 0) {
             creep.memory.collecting = true;
             utils.cleanup_move_to(creep);
             // reset destId if the claimed source is not null
+            // we do this so the creep doesnt move back to an area around the source that it had previously been set to
             if (creep.memory.claimed_source != null) {
                 creep.memory.destId = creep.memory.claimed_source;
+                creep.memory.destLoc = creep.memory.claimed_source_loc;
             }
         }
 
@@ -44,6 +47,7 @@ var roleSmartHarvester = {
             } else {
                 if (creep.memory.claimed_source == null && creep.memory.destId != null) {
                     creep.memory.claimed_source = creep.memory.destId;
+                    creep.memory.claimed_source_loc = creep.memory.destLoc;
                 }
             }
         } 
@@ -53,7 +57,7 @@ var roleSmartHarvester = {
                 // the claimed target is null
                 const x = Memory.rooms[creep.room.name].sources[creep.memory.claimed_source].container_x;
                 const y = Memory.rooms[creep.room.name].sources[creep.memory.claimed_source].container_y;
-                const loc = creep.room.getPostitionAt(x, y);
+                const loc = creep.room.getPositionAt(x, y);
                 const structs = loc.lookFor(LOOK_STRUCTURES);
                 let link_id = null;
                 for (const i in structs) {
@@ -71,17 +75,20 @@ var roleSmartHarvester = {
                 creep.memory.claimed_target = link_id;
             }
             const target = Game.getObjectById(creep.memory.claimed_target);
-            if (target.cooldown == 0 && target.getCapacity() > 0) {
+            if (target.cooldown == 0 && target.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
                 // send to the master link
                 const masterTarget = Game.getObjectById(creep.room.memory.masterLink);
-                target.transferEnergy(masterTarget);
+                transErr = target.transferEnergy(masterTarget);
+                if (transErr != 0) {
+                    console.log('error with transfering energy to master ' + transErr)
+                }
             }
             // transfer to container
-            const tErr = creep.transfer(target);
+            const tErr = creep.transfer(target, RESOURCE_ENERGY);
             if (tErr == ERR_NOT_IN_RANGE) {
                 creep.moveTo(target, utils.movement_options);
-            } else {
-                console.log('smart harvester problem with transfer ' + tERr);
+            } else if (tErr != 0) {
+                console.log('smart harvester problem with transfer ' + tErr);
             }
         }
     },
