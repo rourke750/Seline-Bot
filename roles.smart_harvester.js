@@ -1,6 +1,6 @@
 var utils = require('utils');
 
-const normal_creep = [WORK, WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE];
+const normal_creep = [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)]
@@ -17,9 +17,9 @@ var roleSmartHarvester = {
                 sourceMapping[s.container_x + '-' + s.container_y] = true
             }
         }
-        const containers = room.find(FIND_STRUCTURES, {
+        const containers = room.find(FIND_MY_STRUCTURES, {
             filter: (structure) => {
-                    return structure.structureType == STRUCTURE_CONTAINER &&
+                    return structure.structureType == STRUCTURE_LINK &&
                         sourceMapping[structure.pos.x + '-' + structure.pos.y] == true &&
                         structure.room.name == room.name;
                 }
@@ -30,13 +30,14 @@ var roleSmartHarvester = {
     run: function(creep) {
         //return
         if (!creep.memory.collecting && creep.store.getUsedCapacity() == 0) {
+            // if we are no longer collecting because we just deposited
             creep.memory.collecting = true;
             utils.cleanup_move_to(creep);
             // reset destId if the claimed source is not null
             // we do this so the creep doesnt move back to an area around the source that it had previously been set to
             if (creep.memory.claimed_source != null) {
                 creep.memory.destId = creep.memory.claimed_source;
-                creep.memory.destLoc = creep.memory.claimed_source_loc;
+                creep.memory.destLoc = creep.pos;
             }
         }
 
