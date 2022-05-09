@@ -42,7 +42,11 @@ var roleSmartHarvester = {
         }
 
         if (creep.memory.collecting) {
-            if (!utils.harvest_source(creep, false)) {
+            // if we are full disable collecting
+            const target = creep.pos.findClosestByRange(FIND_DROPPED_RESOURCES);
+            if (target && creep.pickup(target) == 0) {
+                
+            } else if (!utils.harvest_source(creep, false)) {
                 creep.memory.collecting = false;
                 utils.cleanup_move_to(creep);
             } else {
@@ -88,7 +92,7 @@ var roleSmartHarvester = {
             const tErr = creep.transfer(target, RESOURCE_ENERGY);
             if (tErr == ERR_NOT_IN_RANGE) {
                 creep.moveTo(target, utils.movement_options);
-            } else if (tErr != 0) {
+            } else if (tErr != ERR_FULL && tErr != 0) {
                 console.log('smart harvester problem with transfer ' + tErr);
             }
         }

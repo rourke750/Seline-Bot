@@ -65,7 +65,7 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
     // build priority:
     // 1. always harvesters, 2 at least 1 upgrader, 3 repairer, 4 builder
     const roomHarvesters = _.filter(harvesters, (creep) => creep.memory.home_room === spawn.room.name);
-    if (roomHarvesters.length < 6) {
+    if (roomHarvesters.length < 4) {
         roleHarvester.create_creep(spawn);
         const text = `harvesters ${roomHarvesters.length}`;
         spawn.room.visual.text(
@@ -76,7 +76,7 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
     } else {
         const roomUpgraders = _.filter(upgraders, (creep) => creep.memory.home_room == spawn.room.name);
         const roomBuilders = _.filter(builders, (creep) => creep.room.name == spawn.room.name);
-        const roomRepairers = _.filter(repairers, (creep) => creep.room.name == spawn.room.name);
+        const roomRepairers = _.filter(repairers, (creep) => creep.memory.home_room == spawn.room.name);
         const roomSmartHarvesters = _.filter(smartHarvesters, (creep) => creep.room.name == spawn.room.name);
         const roomHaulers = _.filter(haulers, (creep) => creep.room.name == spawn.room.name);
         if (roomUpgraders.length == 0) {
@@ -84,7 +84,7 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
             return;
         }
         // Now we want to see what percent of everything else is available and spawn accordingly
-        const upgraderPer = roomUpgraders.length /14;
+        const upgraderPer = roomUpgraders.length /18;
         const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
         const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
         const scountPerr = scouts.length / 2;
@@ -146,6 +146,8 @@ function constructRooms(room) {
     }
     else if ((Game.time + 30) % 1000 == 0) {
         construction.remove_old_roads(room);
+    } else if ((Game.time + 40) % 1000 == 0) {
+        pathFinder.build_cost_matrix(room.name);
     }
 }
 
@@ -280,7 +282,7 @@ module.exports.loop = function () {
             var creep = Game.creeps[name];
             var role = creep.memory.role;
             if (role == null || role == undefined) {
-                console.log(creep.name + ' ' + ' has an undefined file?');
+                console.log(creep.name + ' ' + role + ' has an undefined role? ' + creep.pos);
                 continue;
             }
             creepMapping[role].run(creep);

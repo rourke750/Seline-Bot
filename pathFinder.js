@@ -1,4 +1,63 @@
+const obsticalD = {};
+for (ob in OBSTACLE_OBJECT_TYPES) {
+    obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
+}
+
 const pathGenerator = {
+
+    find_path_in_room: function(creep, dstX, dstY, opts={maxOps:2000, avoidCreep: false}) {
+        if (opts == null) {
+            opts = {};
+        }
+        opts.maxOps = opts.maxOps || 2000;
+        opts.avoidCreep = opts.avoidCreep || false;
+        // get the cost matrix for the room
+        // check if in cache
+        let range = 0
+        const struct = creep.room.lookForAt(LOOK_STRUCTURES, dstX, dstY);
+        if (struct.length > 0) {
+            for (s in struct) {
+                if (struct[s].structureType in obsticalD) {
+                    range = 1;
+                    break;
+                }
+            }
+        }
+        
+        const v = PathFinder.search(creep.pos, {'pos': new RoomPosition(dstX, dstY, creep.pos.roomName), 'range': range},
+            {
+                plainCost: 2,
+                swampCost: 10,
+                roomCallback: function(roomName) {
+                    let c = null
+                    if (roomName in Memory.costMatrix)
+                        c = PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
+                    
+                    if (opts.avoidCreep && c != null) {
+                        const r = Game.rooms[roomName];
+                        if (r == null) {
+                            return c;
+                        }
+                        r.find(FIND_CREEPS).forEach(function(oC) {
+                              c.set(oC.pos.x, oC.pos.y, 0xff);
+                            });
+                    }
+
+                    return c;
+                },
+                maxOps: opts.maxOps
+            }
+        )
+        if (v.incomplete) {
+            console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' ignore creeps' + opts.avoidCreep +' paths ' + v.path)
+        }
+        if (v.path.length == 0) {
+            return null;
+        }
+        const convertedPath = this.convertPathFinderSearch(creep.pos, v.path)
+        const p = Room.serializePath(convertedPath[creep.room.name]);
+        return p;
+    },
     
     find_highway: function(pos, dstRoom) {
         // We want to see if a path to the dstRoom already exists if not we need to create it
@@ -136,7 +195,7 @@ const pathGenerator = {
         
         // todo in the future we will want to be able to invalidate a room
         
-        if (Memory.costMatrix == null || Memory.costMatrix == unknown) {
+        if (Memory.costMatrix == null) {
             Memory.costMatrix = {};
         }
         
@@ -164,52 +223,8 @@ const pathGenerator = {
         //room.find(FIND_CREEPS).forEach(function(creep) {
         //  costs.set(creep.pos.x, creep.pos.y, 0xff);
         //});
-
-        if (Memory.costMatrix == null || Memory.costMatrix == unknown) {
-            Memory.costMatrix = {};
-        }
         Memory.costMatrix[roomName] = costs.serialize();
         return true;
     },
 };
-/*
-let ret = PathFinder.search(
-        creep.pos, goals,
-        {
-          // We need to set the defaults costs higher so that we
-          // can set the road cost lower in `roomCallback`
-          plainCost: 2,
-          swampCost: 10,
-    
-          roomCallback: function(roomName) {
-    
-            let room = Game.rooms[roomName];
-            // In this example `room` will always exist, but since 
-            // PathFinder supports searches which span multiple rooms 
-            // you should be careful!
-            if (!room) return;
-            let costs = new PathFinder.CostMatrix;
-    
-            room.find(FIND_STRUCTURES).forEach(function(struct) {
-              if (struct.structureType === STRUCTURE_ROAD) {
-                // Favor roads over plain tiles
-                costs.set(struct.pos.x, struct.pos.y, 1);
-              } else if (struct.structureType !== STRUCTURE_CONTAINER &&
-                         (struct.structureType !== STRUCTURE_RAMPART ||
-                          !struct.my)) {
-                // Can't walk through non-walkable buildings
-                costs.set(struct.pos.x, struct.pos.y, 0xff);
-              }
-            });
-    
-            // Avoid creeps in the room
-            room.find(FIND_CREEPS).forEach(function(creep) {
-              costs.set(creep.pos.x, creep.pos.y, 0xff);
-            });
-    
-            return costs;
-          },
-        }
-      );
-      */
 module.exports = pathGenerator;

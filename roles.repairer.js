@@ -30,6 +30,14 @@ var roleRepairer = {
         return repairAmount;
     },
 
+    find_repairs: function(creep) {
+        return creep.pos.findClosestByRange(FIND_STRUCTURES, {
+            filter: (structure) => {
+                return structure.hits < structure.hitsMax && structure.room.name == creep.room.name;
+            }
+        })
+    },
+
     /** @param {Creep} creep **/
     run: function(creep) {
         if (creep.memory.repairing && creep.store[RESOURCE_ENERGY] == 0) {
@@ -39,17 +47,19 @@ var roleRepairer = {
         
         if (!creep.memory.repairing) {
             if (!utils.harvest_source(creep)) {
+                console.log('herm')
                 creep.memory.repairing = true;
                 utils.cleanup_move_to(creep);
             }
         }
         if(creep.memory.repairing) {
+            if (creep.room.name != creep.memory.home_room) {
+                creep.memory.destLoc = {roomName: creep.memory.home_room};
+                utils.move_to(creep, this.find_repairs);
+                return;
+            }
             if (creep.memory.destId == null) {
-                const repairs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
-                    filter: (structure) => {
-                        return structure.hits < structure.hitsMax && structure.room.name == creep.room.name;
-                    }
-                })
+                const repairs = this.find_repairs(creep);
                 if (repairs != null) {
                     creep.memory.destId = repairs.id;
                 } else {
@@ -82,7 +92,7 @@ var roleRepairer = {
 	create_creep: function(spawn) {
         var newName = 'Repairer' + Game.time;
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_repairer][1], newName,
-            {memory: {role: 'repairer', repairing: false}});
+            {memory: {role: 'repairer', repairing: false, home_room: spawn.room.name}});
     },
     
     upgrade: function(room) {
