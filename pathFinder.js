@@ -49,11 +49,13 @@ const pathGenerator = {
             }
         )
         if (v.incomplete) {
-            console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' ignore creeps' + opts.avoidCreep +' paths ' + v.path)
+            console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' avoid creeps ' + opts.avoidCreep +' paths ' + v.path)
         }
         if (v.path.length == 0) {
-            return null;
+            console.log('Zero path ' + creep.pos + ' to ' + dstX + ' ' + dstY)
+            return Room.serializePath([]);
         }
+        //console.log('aaaaaaaa ' + v.path)
         const convertedPath = this.convertPathFinderSearch(creep.pos, v.path)
         const p = Room.serializePath(convertedPath[creep.room.name]);
         return p;

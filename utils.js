@@ -367,7 +367,7 @@ var utils = {
                 // if we have a function this should normally be for coming into destination room
                 const newP = pathFinder.find_path_in_room(creep, target.pos.x, target.pos.y);
                 creep.memory.current_path[creep.pos.roomName] = newP;
-            } else {
+            } else if (v[0] != null && v[1] != null) {
                 // if we dont have a new roomfunc used for calculating where to go next we will instead use the saved cords for returning
                 const newP = pathFinder.find_path_in_room(creep, v[0], v[1]);
                 creep.memory.current_path[creep.pos.roomName] = newP;
