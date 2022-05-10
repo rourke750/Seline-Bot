@@ -3,11 +3,14 @@ var utils = require('utils');
 const normal_creep = [WORK, CARRY, MOVE];
 const big_creep = [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE];
 const bigger_creep = [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE] // 800
+const bigger_creepv2 = [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, 
+    CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE] // 800
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)],
     [1, big_creep, utils.get_creep_cost(big_creep)],
-    [2, bigger_creep, utils.get_creep_cost(bigger_creep)]
+    [2, bigger_creep, utils.get_creep_cost(bigger_creep)],
+    [3, bigger_creepv2, utils.get_creep_cost(bigger_creepv2)]
 ]
 var roleHarvester = {
     

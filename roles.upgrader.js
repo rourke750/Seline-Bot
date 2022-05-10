@@ -34,11 +34,11 @@ var roleUpgrader = {
                 creep.memory.destId = Game.rooms[creep.memory.home_room].controller.id;
             }
         }
-        if (creep.memory.home_room == null) {
-            //creep.memory.home_room = creep.room.name
-        }
         
         const upgradeErr = creep.upgradeController(Game.rooms[creep.memory.home_room].controller)
+        if (creep.memory.destId == null) {
+            creep.memory.destId = Game.rooms[creep.memory.home_room].controller.id;
+        }
         if(creep.memory.upgrading && upgradeErr == ERR_NOT_IN_RANGE) {
             utils.move_to(creep, this.get_main_upgrader);
         }
