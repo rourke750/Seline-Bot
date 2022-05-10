@@ -379,18 +379,19 @@ var utils = {
             const errCode = creep.moveByPath(p);
             creep.memory.last_pos = creep.pos;
             if (errCode == ERR_NOT_FOUND) {
-                creep.memory.current_path = {};
+                //creep.memory.current_path = {};
                 if (v[2] != creep.room.name) {
                     this.cleanup_move_to(creep);
                     return;
                 }
-                const p = pathFinder.find_path_in_room(creep, v[0], v[1]);
+                p = pathFinder.find_path_in_room(creep, v[0], v[1]);
                 creep.memory.current_path[creep.roomName] = p;
             } else if (errCode != 0) {
                 console.log(creep.name + ' error with creep moving ' + errCode + ' ' + creep.pos)
             }
         }
-        new RoomVisual(creep.room.name).poly(Room.deserializePath(p), {stroke: '#fff', strokeWidth: .15,
+        if (p != null)
+            new RoomVisual(creep.room.name).poly(Room.deserializePath(p), {stroke: '#fff', strokeWidth: .15,
                 opacity: .2, lineStyle: 'dashed'});
     },
     

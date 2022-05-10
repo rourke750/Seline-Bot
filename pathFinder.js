@@ -52,7 +52,9 @@ const pathGenerator = {
             console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' avoid creeps ' + opts.avoidCreep +' paths ' + v.path)
         }
         if (v.path.length == 0) {
-            console.log('Zero path ' + creep.pos + ' to ' + dstX + ' ' + dstY)
+            console.log('Zero path ' + creep.name + ' ' + creep.pos + ' to ' + dstX + ' ' + dstY + ' cost ' +v.cost + ' range ' + range)
+            //var err = new Error();
+            //console.log(err.stack)
             return Room.serializePath([]);
         }
         //console.log('aaaaaaaa ' + v.path)
