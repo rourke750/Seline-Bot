@@ -51,6 +51,7 @@ for (const pMap in profilerMapings) {
 }
 
 global.utils = utils;
+global.pathFinder = pathFinder;
 
 //todo make each creep find the cloest energy first 
 // todo make similar actors do same actions
@@ -74,8 +75,9 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
             spawn.pos.y + 2, 
             {align: 'center', opacity: 0.8});
     } else {
+        //todo move below code where it filters on home_room to utils package where we can cache per tick
         const roomUpgraders = _.filter(upgraders, (creep) => creep.memory.home_room == spawn.room.name);
-        const roomBuilders = _.filter(builders, (creep) => creep.room.name == spawn.room.name);
+        const roomBuilders = _.filter(builders, (creep) => creep.memory.home_room == spawn.room.name);
         const roomRepairers = _.filter(repairers, (creep) => creep.memory.home_room == spawn.room.name);
         const roomSmartHarvesters = _.filter(smartHarvesters, (creep) => creep.room.name == spawn.room.name);
         const roomHaulers = _.filter(haulers, (creep) => creep.room.name == spawn.room.name);
@@ -84,7 +86,7 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
             return;
         }
         // Now we want to see what percent of everything else is available and spawn accordingly
-        const upgraderPer = roomUpgraders.length /18;
+        const upgraderPer = utils.notZero((roomUpgraders.length / roleUpgrader.get_harvest_count(spawn.room)));
         const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
         const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
         const scountPerr = scouts.length / 2;
@@ -100,7 +102,6 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
             [haulersPerr, roleHauler]
         ];
         nextCreate.sort(function(a, b) {return a[0] - b[0]});
-        //console.log(JSON.stringify(nextCreate))
         if (nextCreate[0][0] < 1) {
             if (!spawn.spawning)
                 nextCreate[0][1].create_creep(spawn);
@@ -139,15 +140,16 @@ function handleFlags() {
 
 function constructRooms(room) {
     //construction.buildAuxNearSpawn(room);
+    //construction.buildRoadsFromMasterSpawnToExits(room)
     if ((Game.time + 20) % 1000 == 0) {
         construction.buildSpawnCenter(room);
         construction.build_extensions(room);
         construction.buildAuxNearSpawn(room);
-    }
-    else if ((Game.time + 30) % 1000 == 0) {
+        construction.buildRoadsFromMasterSpawnToExits(room);
+    } else if ((Game.time + 30) % 1000 == 0) {
         construction.remove_old_roads(room);
-    } else if ((Game.time + 40) % 1000 == 0) {
-        pathFinder.build_cost_matrix(room.name);
+    } else if ((Game.time + 40) % 100 == 0) {
+        pathFinder.build_cost_matrix(room.name, true);
     }
 }
 

@@ -28,7 +28,14 @@ var roleBuilder = {
         return val;
     },
 
-    /** @param {Creep} creep **/
+    findConstructSite: function(creep) {
+        return creep.pos.findClosestByRange(FIND_CONSTRUCTION_SITES, {
+            filter: (structure) => {
+                return structure.room.name == creep.room.name;
+            }
+        });
+    },
+
     run: function(creep) {
         if (creep.memory.building && creep.store[RESOURCE_ENERGY] == 0) {
             creep.memory.building = false;
@@ -42,12 +49,13 @@ var roleBuilder = {
             }
         }
         if (creep.memory.building) {
+            if (creep.room.name != creep.memory.home_room) {
+                creep.memory.destLoc = {roomName: creep.memory.home_room};
+                utils.move_to(creep, this.findConstructSite);
+                return;
+            }
             if (creep.memory.destId == null) {
-                const con = creep.pos.findClosestByRange(FIND_CONSTRUCTION_SITES, {
-                        filter: (structure) => {
-                            return structure.room.name == creep.room.name;
-                        }
-                    });
+                const con = this.findConstructSite(creep);
                 if (con != null) {
     	            creep.memory.destId = con.id;
                 }
@@ -61,7 +69,7 @@ var roleBuilder = {
                 } else {
                     const buildErr = creep.build(source);
                     if (buildErr == ERR_NOT_IN_RANGE) {
-                        utils.move_to(creep);
+                        utils.move_to(creep, this.findConstructSite);
                     } else if (buildErr == ERR_INVALID_TARGET) {
                         utils.cleanup_move_to(creep);
                     }
@@ -76,7 +84,7 @@ var roleBuilder = {
 	create_creep: function(spawn) {
         var newName = 'Builder' + Game.time;
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_builder][1], newName,
-            {memory: {role: 'builder', building: false}});
+            {memory: {role: 'builder', building: false, home_room: spawn.room.name}});
     },
     
     upgrade: function(room) {

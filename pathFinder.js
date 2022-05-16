@@ -59,6 +59,9 @@ const pathGenerator = {
         }
         //console.log('aaaaaaaa ' + v.path)
         const convertedPath = this.convertPathFinderSearch(creep.pos, v.path)
+        if (!(creep.room.name in convertedPath)) {
+            return Room.serializePath([]);
+        }
         const p = Room.serializePath(convertedPath[creep.room.name]);
         return p;
     },
@@ -194,7 +197,7 @@ const pathGenerator = {
         return resultPath;
     },
     
-    build_cost_matrix: function(roomName) {
+    build_cost_matrix: function(roomName, override=false) {
         // We want to build a cost matrix per room and then save to memory
         
         // todo in the future we will want to be able to invalidate a room
@@ -203,7 +206,7 @@ const pathGenerator = {
             Memory.costMatrix = {};
         }
         
-        if (roomName in Memory.costMatrix)
+        if (roomName in Memory.costMatrix && !override)
             return true
         
         let room = Game.rooms[roomName];
@@ -221,6 +224,12 @@ const pathGenerator = {
             // Can't walk through non-walkable buildings
             costs.set(struct.pos.x, struct.pos.y, 0xff);
           }
+        });
+
+        room.find(FIND_CONSTRUCTION_SITES).forEach(function(struct) {
+            if (struct.structureType in obsticalD) {
+                costs.set(struct.pos.x, struct.pos.y, 0xff);
+            }
         });
 
         // Avoid creeps in the room

@@ -18,9 +18,10 @@ var roleHauler = {
     
     find_closest_structure: function(creep) {
         //todo include containers
-        const objs = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
+        const objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                         filter: (structure) => {
-                            return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
+                            return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN || 
+                                structure.structureType == STRUCTURE_CONTAINER) &&
                                 structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
                         }
                     });

@@ -76,7 +76,7 @@ var roleRepairer = {
                 else if (source.hits != null) {
                     const buildErr = creep.repair(source);
                     if (buildErr == ERR_NOT_IN_RANGE) {
-                        utils.move_to(creep);
+                        utils.move_to(creep, this.find_repairs);
                     } else if (buildErr == ERR_INVALID_TARGET) {
                         utils.cleanup_move_to(creep);
                     }
