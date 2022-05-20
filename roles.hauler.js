@@ -21,7 +21,7 @@ var roleHauler = {
         const objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                         filter: (structure) => {
                             return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN || 
-                                structure.structureType == STRUCTURE_CONTAINER) &&
+                                structure.structureType == STRUCTURE_CONTAINER || structure.structureType == STRUCTURE_TOWER) &&
                                 structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
                         }
                     });
@@ -70,7 +70,19 @@ var roleHauler = {
                     creep.memory.collecting = false;
                     utils.cleanup_move_to(creep);
                 } else {
-                    // link has no energy, we have no energy, lets just wait
+                    // link has no energy, we have no energy, lets move to the right of the link and wait there
+                    const link = Game.getObjectById(creep.room.memory.masterLink);
+                    const pos = link.pos;
+                    pos.x += 1
+                    if (creep.memory.destId != link.id) {
+                        utils.cleanup_move_to(creep);
+                        creep.memory.destId = link.id;
+                        creep.memory.destLoc = link.pos;
+                    }
+                    if (!creep.pos.isEqualTo(pos)) {
+                        // only move when we are not in the spot
+                        utils.move_to(creep);
+                    }
                     return;
                 }
                 
@@ -80,11 +92,25 @@ var roleHauler = {
 
         // if we are not collecting energy then lets start dispensing it
         if (!creep.memory.collecting) {
-            if (creep.memory.destId == null && creep.memory.destLoc == null) {
+            if ((creep.memory.destId == null && creep.memory.destLoc == null) || creep.memory.destId == creep.room.memory.masterLink) {
                 // do we have a destination, if not lets find one
                 const target = this.find_closest_structure(creep);
                 if (target == null) {
-                    // do nothing shiat
+                    // no target go sit
+                    // it's fine to let the bottom code run even if its already set as its really cheap to run if we are at the location
+                    // and destId is already link.id
+                    const link = Game.getObjectById(creep.room.memory.masterLink);
+                    const pos = link.pos;
+                    pos.x += 1
+                    if (creep.memory.destId != link.id) {
+                        utils.cleanup_move_to(creep);
+                        creep.memory.destId = link.id;
+                        creep.memory.destLoc = link.pos;
+                    }
+                    if (!creep.pos.isEqualTo(pos)) {
+                        // only move when we are not in the spot
+                        utils.move_to(creep);
+                    }
                     return;
                 }
                 creep.memory.destId = target.id;

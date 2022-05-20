@@ -11,6 +11,11 @@ const pathGenerator = {
         }
         opts.maxOps = opts.maxOps || 2000;
         opts.avoidCreep = opts.avoidCreep || false;
+
+        if (creep.pos.x == dstX && creep.pos.y == dstY) {
+            return Room.serializePath([]);
+        }
+
         // get the cost matrix for the room
         // check if in cache
         let range = 0

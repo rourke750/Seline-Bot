@@ -28,9 +28,13 @@ var roleHarvester = {
     },
     
     find_closest_structure: function(creep) {
+        const containerPosX = creep.room.memory.spawnMasterX;
+        const containerPosY = creep.room.memory.spawnMasterY;
         const objs = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
                         filter: (structure) => {
-                            return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
+                            const collectorStruct = structure.structureType == STRUCTURE_CONTAINER && structure.pos.x == containerPosX && 
+                                structure.pos.y == containerPosY;
+                            return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN || collectorStruct) &&
                                 structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
                         }
                     });

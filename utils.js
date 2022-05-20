@@ -221,7 +221,8 @@ var utils = {
             (creep.memory.destLoc == null || creep.memory.destLoc == undefined)) {
             // lets see if its a type that we want to get from the container
             let found = false;
-            if (creep.memory.role === 'builder') {
+            const role = creep.memory.role;
+            if (role === 'builder' || role === 'upgrader' || role === 'repairer') {
                 found = this.findContainer(creep);
             }
             if(!found && !this.find_source(creep)) {

@@ -1,7 +1,7 @@
 var utils = require('utils');
 
 const normal_creep = [WORK, CARRY, MOVE];
-const big_creep = [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE];
+const big_creep = [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE];
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)],

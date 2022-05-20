@@ -296,6 +296,41 @@ var construction = {
         //new RoomVisual(room.name).poly(positions, {stroke: '#fff', strokeWidth: .15,
           //      opacity: .2, lineStyle: 'dashed'});
     },
+
+    buildRoadFromMasterSpawnToSources: function(room) {
+        if (room.memory.spawnMaster == null || !room.controller.my) {
+            return;
+        }
+        const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
+        const sources = room.find(FIND_SOURCES);
+        for (const sourceKey in sources) {
+            const sourceV = sources[sourceKey];
+            const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, sourceV.pos.x, sourceV.pos.y))
+            for (var i = 0; i < paths.length; i++) {
+                const path = paths[i];
+                const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
+                if (ter != 'wall') {
+                    room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
+                }
+            }
+        }
+    },
+
+    buildRoadsFromMasterSpawnToController: function(room) {
+        if (room.memory.spawnMaster == null || !room.controller.my) {
+            return;
+        }
+        const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
+        
+        const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, room.controller.pos.x, room.controller.pos.y))
+        for (var i = 0; i < paths.length; i++) {
+            const path = paths[i];
+            const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
+            if (ter != 'wall') {
+                room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
+            }
+        }
+    },
     
     build_roads_from_source: function(source) {
         if (!source.room.controller.my) {

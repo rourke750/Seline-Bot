@@ -7,6 +7,7 @@ const roleHauler = require('roles.hauler');
 
 const militaryScout = require('military.scout');
 const militaryDefender = require('military.defender');
+const militaryTower = require('military.tower');
 
 const construction = require('construction');
 
@@ -142,10 +143,13 @@ function constructRooms(room) {
     //construction.buildAuxNearSpawn(room);
     //construction.buildRoadsFromMasterSpawnToExits(room)
     if ((Game.time + 20) % 1000 == 0) {
-        construction.buildSpawnCenter(room);
-        construction.build_extensions(room);
+        construction.buildSpawnCenter(room); // hanldes building the spawns
+        construction.build_extensions(room); // hanldes building the extensions
+         // handles building the roads to extensions, towers, link near spawn, other center piece stuff
         construction.buildAuxNearSpawn(room);
         construction.buildRoadsFromMasterSpawnToExits(room);
+        construction.buildRoadFromMasterSpawnToSources(room);
+        construction.buildRoadsFromMasterSpawnToController(room);
     } else if ((Game.time + 30) % 1000 == 0) {
         construction.remove_old_roads(room);
     } else if ((Game.time + 40) % 100 == 0) {
@@ -160,6 +164,7 @@ function loopRooms() {
             creepMapping[role].upgrade(room);
         }
         constructRooms(room);
+        militaryTower.run(room);
 
         const sources = room.find(FIND_SOURCES);
         for (var id in sources) {
