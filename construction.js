@@ -9,6 +9,27 @@ for (ob in OBSTACLE_OBJECT_TYPES) {
  
 var construction = {
 
+    build_missing_spawn: function(room) {
+        if (room.controller.my && room.memory.spawnMaster == null && room.name in Memory.flags.capture) {
+            // let's try place a master spawn
+            // lets see if there is a flag we were just captured
+            const flags = room.find(FIND_FLAGS);
+            let f = null;
+            for (const fK in flags) {
+                const flag = flags[fK];
+                if (flag.name.startsWith('Capture')) {
+                    f = flag;
+                    break
+                }
+            }
+            room.memory['spawnMasterX'] = f.pos.x;
+            room.memory['spawnMasterY'] = f.pos.y;
+            room.memory['spawnMaster'] = `${room.name}-1`;
+            this.buildSpawnCenter(room);
+            f.remove();
+        }
+    },
+
     doesConstructionExistAndCantBuild: function(room, pos) { // return true if there is already a struct there or a construction site
         const struct = room.lookForAt(LOOK_STRUCTURES, pos.x, pos.y);
         const c = room.lookForAt(LOOK_CONSTRUCTION_SITES, pos.x, pos.y);

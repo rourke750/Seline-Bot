@@ -1,10 +1,22 @@
 const pathFinder = require('pathFinder');
 
 let filtered_mapping = {};
+let filtered_homeroom_mappings = {};
 
 var utils = {
     movement_options: {visualizePathStyle: {stroke: '#ffffff'}, reusePath: 10, ignoreCreeps: true},
     movement_collision: {visualizePathStyle: {stroke: '#ffffff'}, reusePath: 10, ignoreCreeps: false},
+
+    get_scout_count: function() {
+        let count = 0;
+        for (const k in Memory.flags.reserve) {
+            count += 2;
+        }
+        for (const k in Memory.flags.capture) {
+            count += 1;
+        }
+        return count;
+    },
 
     buildLineDirection(x, y, dir, length) {
         positions = []
@@ -37,16 +49,31 @@ var utils = {
         }
         return filtered_mapping[role];
     },
+
+    get_home_filtered_creeps: function(home) {
+        if (!(home in filtered_homeroom_mappings)) {
+            // doesnt exist lets add it
+            filtered_homeroom_mappings[home] = _.filter(Game.creeps, (creep) => creep.memory.home_room == home);
+        }
+        return filtered_homeroom_mappings[home];
+    },
     
     clear_filtered_creeps: function() {
         filtered_mapping = {};
+        filtered_homeroom_mappings = {};
         for (const k in Game.creeps) {
             const v = Game.creeps[k];
             const r = v.memory.role;
             if (!(r in filtered_mapping)) {
                 filtered_mapping[r] = [];
             }
+
+            const h = v.memory.home_room;
+            if (!(h in filtered_homeroom_mappings)) {
+                filtered_homeroom_mappings[h] = [];
+            }
             filtered_mapping[r].push(v);
+            filtered_homeroom_mappings[h].push(v);
         }
     },
     

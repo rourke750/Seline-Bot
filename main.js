@@ -58,7 +58,7 @@ global.pathFinder = pathFinder;
 // todo make similar actors do same actions
 //todo check if a creep is idle
 
-function handle_build_order(spawn, harvesters, upgraders, builders, repairers, scouts, smartHarvesters, haulers) {
+function handle_build_order(spawnsMapping, roomName, harvesters, upgraders, builders, repairers, scouts, smartHarvesters, haulers) {
     // test code for logging
     // todo try get cords for coordinator in another room that i dont have vision using terrain scan
     //const flag = Game.flags['Capture']
@@ -66,82 +66,166 @@ function handle_build_order(spawn, harvesters, upgraders, builders, repairers, s
     
     // build priority:
     // 1. always harvesters, 2 at least 1 upgrader, 3 repairer, 4 builder
-    const roomHarvesters = _.filter(harvesters, (creep) => creep.memory.home_room === spawn.room.name);
-    if (roomHarvesters.length < 4) {
-        roleHarvester.create_creep(spawn);
-        const text = `harvesters ${roomHarvesters.length}`;
-        spawn.room.visual.text(
-            text,
-            spawn.pos.x, 
-            spawn.pos.y + 2, 
-            {align: 'center', opacity: 0.8});
-    } else {
-        //todo move below code where it filters on home_room to utils package where we can cache per tick
-        const roomUpgraders = _.filter(upgraders, (creep) => creep.memory.home_room == spawn.room.name);
-        const roomBuilders = _.filter(builders, (creep) => creep.memory.home_room == spawn.room.name);
-        const roomRepairers = _.filter(repairers, (creep) => creep.memory.home_room == spawn.room.name);
-        const roomSmartHarvesters = _.filter(smartHarvesters, (creep) => creep.room.name == spawn.room.name);
-        const roomHaulers = _.filter(haulers, (creep) => creep.room.name == spawn.room.name);
-        if (roomUpgraders.length == 0) {
-            roleUpgrader.create_creep(spawn);
-            return;
+    const spawns = spawnsMapping[roomName]
+    for (const sK in spawns) {
+        const spawn = spawns[sK];
+        const roomHarvesters = _.filter(harvesters, (creep) => creep.memory.home_room === spawn.room.name);
+        if (roomHarvesters.length < 4) {
+            roleHarvester.create_creep(spawn);
+            const text = `harvesters ${roomHarvesters.length}`;
+            spawn.room.visual.text(
+                text,
+                spawn.pos.x, 
+                spawn.pos.y + 2, 
+                {align: 'center', opacity: 0.8});
+        } else {
+            //todo move below code where it filters on home_room to utils package where we can cache per tick
+            // todo doesnt make sense that we are doing this for every spawn remove
+            const roomUpgraders = _.filter(upgraders, (creep) => creep.memory.home_room == spawn.room.name);
+            const roomBuilders = _.filter(builders, (creep) => creep.memory.home_room == spawn.room.name);
+            const roomRepairers = _.filter(repairers, (creep) => creep.memory.home_room == spawn.room.name);
+            const roomSmartHarvesters = _.filter(smartHarvesters, (creep) => creep.room.name == spawn.room.name);
+            const roomHaulers = _.filter(haulers, (creep) => creep.room.name == spawn.room.name);
+            if (roomUpgraders.length == 0) {
+                roleUpgrader.create_creep(spawn);
+                return;
+            }
+            // Now we want to see what percent of everything else is available and spawn accordingly
+            const upgraderPer = utils.notZero((roomUpgraders.length / roleUpgrader.get_harvest_count(spawn.room)));
+            const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
+            const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
+            const scountPerr = utils.notZero((scouts.length / utils.get_scout_count()));
+            const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / roleSmartHarvester.get_harvest_count(spawn.room)));
+            const haulersPerr = utils.notZero((roomHaulers.length / roleHauler.get_harvest_count(spawn.room)));
+            
+            const nextCreate = [
+                [upgraderPer, roleUpgrader],
+                [buildersPer, roleBuilder],
+                [repairerPer, roleRepairer],
+                [scountPerr, militaryScout],
+                [smartHarvesterPerr, roleSmartHarvester],
+                [haulersPerr, roleHauler]
+            ];
+            nextCreate.sort(function(a, b) {return a[0] - b[0]});
+            if (nextCreate[0][0] < 1) {
+                if (!spawn.spawning)
+                    nextCreate[0][1].create_creep(spawn);
+            }
+            
+            const text = `up ${upgraderPer.toFixed(2)} build ${buildersPer} rep ${repairerPer}`;
+            spawn.room.visual.text(
+                text,
+                spawn.pos.x, 
+                spawn.pos.y + 2, 
+                {align: 'center', opacity: 0.8});
+            if (spawn.spawning) { 
+                var spawningCreep = Game.creeps[spawn.spawning.name];
+                spawn.room.visual.text(
+                    '🛠️' + spawningCreep.memory.role,
+                    spawn.pos.x + 1, 
+                    spawn.pos.y, 
+                    {align: 'left', opacity: 0.8});
+            }
         }
-        // Now we want to see what percent of everything else is available and spawn accordingly
-        const upgraderPer = utils.notZero((roomUpgraders.length / roleUpgrader.get_harvest_count(spawn.room)));
-        const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
-        const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
-        const scountPerr = scouts.length / 2;
-        const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / roleSmartHarvester.get_harvest_count(spawn.room)));
-        const haulersPerr = utils.notZero((roomHaulers.length / roleHauler.get_harvest_count(spawn.room)));
-        
-        const nextCreate = [
-            [upgraderPer, roleUpgrader],
-            [buildersPer, roleBuilder],
-            [repairerPer, roleRepairer],
-            [scountPerr, militaryScout],
-            [smartHarvesterPerr, roleSmartHarvester],
-            [haulersPerr, roleHauler]
-        ];
-        nextCreate.sort(function(a, b) {return a[0] - b[0]});
-        if (nextCreate[0][0] < 1) {
-            if (!spawn.spawning)
-                nextCreate[0][1].create_creep(spawn);
+    }
+    // if we have no spawns
+    if (spawns == null) {
+        let closest = 9999999;
+        let closestRoomName = null;
+        for (const otherRoomName in spawnsMapping) {
+            const d = Game.map.getRoomLinearDistance(roomName, otherRoomName);
+            if (d < closest) {
+                closest = d;
+                closestRoomName = otherRoomName;
+            }
         }
-        
-        const text = `up ${upgraderPer.toFixed(2)} build ${buildersPer} rep ${repairerPer}`;
-        spawn.room.visual.text(
-            text,
-            spawn.pos.x, 
-            spawn.pos.y + 2, 
-            {align: 'center', opacity: 0.8});
+        for (const sK in spawnsMapping[closestRoomName]) {
+            const spawn = spawnsMapping[closestRoomName][sK];
+            if (spawn.spawning) {
+                continue;
+            }
+            const roomBuilders = _.filter(builders, (creep) => creep.memory.home_room == roomName);
+            const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(Game.rooms[roomName])));
+            if (buildersPer < 1) {
+                roleBuilder.create_creep(spawn, roomName);
+            }
+        }
     }
 }
 
 function handleFlags() {
-    if (Memory.flags == null) {
-        Memory['flags'] = {};
+    const m = Memory['flags'];
+    if (m == null) {
+        Memory['flags'] = {}
+        m = Memory['flags'];
     }
-    if (Memory.flags.energy == null) {
-        Memory.flags['energy'] = {};
+    
+    if (m.energy == null) {
+        m.energy = {};
     }
-    if (Memory.flags.reserve == null) {
-        Memory.flags['reserve'] = {};
+    if (m.reserve == null) {
+        m.reserve = {};
+    }
+    if (m.capture == null) {
+        m.capture = {};
     }
 
     for (const k in Game.flags) {
         const v = Game.flags[k];
-        if (k.startsWith('Energy')) {
-            Memory.flags.energy[v.pos.roomName] = true;
-        } else if (k.startsWith('Reserve')) {
-            Memory.flags.reserve[v.pos.roomName] = true;
+        if (!(v.pos.roomName in Memory.flags.energy) && k.startsWith('Energy')) {
+            Memory.flags.energy[v.pos.roomName] = {};
+        } else if (!(v.pos.roomName in Memory.flags.reserve) && k.startsWith('Reserve')) {
+            Memory.flags.reserve[v.pos.roomName] = {};
+        } else if (!(v.pos.roomName in Memory.flags.capture) && k.startsWith('Capture')) {
+            Memory.flags.capture[v.pos.roomName] = {};
+        }
+    }
+    for (const flagTypeK in m) {
+        for (const arrayPos in m[flagTypeK]) {
+            const flagRooms = m[flagTypeK][arrayPos];
+            for (const creepPos in flagRooms) {
+                if (!(creepPos in Game.creeps)) {
+                    delete flagRooms[creepPos];
+                }
+            }
         }
     }
     //todo remove flags that are no longer there
+    const roomFlags = {};
+    for (const fN in Game.flags) {
+        const flag = Game.flags[fN];
+
+        if (!(flag.pos.roomName in roomFlags)) {
+            roomFlags[flag.pos.roomName] = {};
+        }
+
+        let n;
+        if (flag.name.startsWith('Energy')) {
+            n = 'energy';
+        } else if (flag.name.startsWith('Reserve')) {
+            n = 'reserve';
+        } else if (flag.name.startsWith('Capture')) {
+            n = 'capture';
+        }
+        roomFlags[flag.pos.roomName][n] = true;
+    }
+
+    for (const flagType in m){
+        const roomNames = m[flagType];
+        for (const roomName in roomNames) {
+            if (!(roomName in roomFlags) || !(flagType in roomFlags[roomName])) {
+                // err fucking figure out yourself
+                console.log(JSON.stringify(roomFlags))
+                delete m[flagType][roomName];
+            }
+        }
+    }
 }
 
 function constructRooms(room) {
     //construction.buildAuxNearSpawn(room);
     //construction.buildRoadsFromMasterSpawnToExits(room)
+    construction.build_missing_spawn(room);
     if ((Game.time + 20) % 1000 == 0) {
         construction.buildSpawnCenter(room); // hanldes building the spawns
         construction.build_extensions(room); // hanldes building the extensions
@@ -160,10 +244,13 @@ function constructRooms(room) {
 function loopRooms() {
     for (var name in Game.rooms) {
         const room = Game.rooms[name];
+        constructRooms(room);
         for (var role in creepMapping) {
+            if (room.energyCapacityAvailable == 0) {
+                continue;
+            }
             creepMapping[role].upgrade(room);
         }
-        constructRooms(room);
         militaryTower.run(room);
 
         const sources = room.find(FIND_SOURCES);
@@ -240,26 +327,16 @@ function loopSpawns() {
     const scouts = utils.get_filtered_creeps('scout');
     const smartHarvesters = utils.get_filtered_creeps('smartHarvester');
     const haulers = utils.get_filtered_creeps('hauler');
-
-    for (const name in Game.spawns) {
-        const spawn = Game.spawns[name];
-        
-        //todo come up with a build order in how it should work
-        //todo come up with how we should build the units based on energy available
-        //todo calculate how many creeps per thing are needed per energy and distance
-        //todo come up with way to figure out if builders are needed and how many
-        //todo for sources figure out ticks to regeneration who is traveling and then do stuff based on it ie go to others
-        
-        handle_build_order(spawn, harvesters, upgraders, builders, repairers, scouts, smartHarvesters, haulers);
-        
-        if (spawn.spawning) { 
-            var spawningCreep = Game.creeps[spawn.spawning.name];
-            spawn.room.visual.text(
-                '🛠️' + spawningCreep.memory.role,
-                spawn.pos.x + 1, 
-                spawn.pos.y, 
-                {align: 'left', opacity: 0.8});
+    const mapping = {};
+    for (const k in Game.spawns) {
+        const spawn = Game.spawns[k];
+        if (!(spawn.room.name in mapping)) {
+            mapping[spawn.room.name] = [];
         }
+        mapping[spawn.room.name].push(spawn);
+    }
+    for (const name in Game.rooms) {
+        handle_build_order(mapping, name, harvesters, upgraders, builders, repairers, scouts, smartHarvesters, haulers);
     }
 }
 
