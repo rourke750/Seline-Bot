@@ -1,6 +1,6 @@
 var utils = require('utils');
 
-const normal_creep = [WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
+const normal_creep = [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)]
@@ -28,75 +28,59 @@ var roleSmartHarvester = {
     },
     
     run: function(creep) {
-        //return
-        if (!creep.memory.collecting && creep.store.getUsedCapacity() == 0) {
-            // if we are no longer collecting because we just deposited
-            creep.memory.collecting = true;
+        if (!utils.harvest_source(creep, false)) {
+            creep.memory.collecting = false;
             utils.cleanup_move_to(creep);
-            // reset destId if the claimed source is not null
-            // we do this so the creep doesnt move back to an area around the source that it had previously been set to
-            if (creep.memory.claimed_source != null && creep.pos.getRangeTo(Game.getObjectById(creep.memory.claimed_source)) <= 1) {
-                creep.memory.destId = creep.memory.claimed_source;
-                creep.memory.destLoc = creep.pos;
+        }
+        // handles setting up the claimed source
+        if (creep.memory.claimed_source == null) {
+            creep.memory.claimed_source = creep.memory.destId;
+        }
+        // handles setting the linked_claim
+        if (creep.memory.claimed_target == null) {
+            // the claimed target is null
+            const x = Memory.rooms[creep.room.name].sources[creep.memory.claimed_source].container_x;
+            const y = Memory.rooms[creep.room.name].sources[creep.memory.claimed_source].container_y;
+            const loc = creep.room.getPositionAt(x, y);
+            const structs = loc.lookFor(LOOK_STRUCTURES);
+            let link_id = null;
+            for (const i in structs) {
+                const v = structs[i];
+                if (v.structureType == 'link') {
+                    link_id = v.id;
+                    break;
+                }
             }
+            if (link_id == null) {
+                // how the fuck is the link id null, was it destroyed???
+                console.log('smart harvester link somehow missing????? ' + creep.name + ' ' + creep.pos)
+                return;
+            }
+            creep.memory.claimed_target = link_id;
         }
 
-        if (creep.memory.collecting) {
-            // if we are full disable collecting
-            const target = creep.pos.findClosestByRange(FIND_DROPPED_RESOURCES);
-            if (target && creep.pickup(target) == 0) {
-                
-            } else if (!utils.harvest_source(creep, false)) {
-                creep.memory.collecting = false;
-                utils.cleanup_move_to(creep);
-            } else {
-                if (creep.memory.claimed_source == null && creep.memory.destId != null) {
-                    creep.memory.claimed_source = creep.memory.destId;
-                    creep.memory.claimed_source_loc = creep.memory.destLoc;
-                }
-                if (creep.name == 'Smart-Harvester46672231') {
-                    
-                }
-            }
-        } 
-        
-        if (!creep.memory.collecting) {
-            if (creep.memory.claimed_target == null) {
-                // the claimed target is null
-                const x = Memory.rooms[creep.room.name].sources[creep.memory.claimed_source].container_x;
-                const y = Memory.rooms[creep.room.name].sources[creep.memory.claimed_source].container_y;
-                const loc = creep.room.getPositionAt(x, y);
-                const structs = loc.lookFor(LOOK_STRUCTURES);
-                let link_id = null;
-                for (const i in structs) {
-                    const v = structs[i];
-                    if (v.structureType == 'link') {
-                        link_id = v.id;
-                        break;
-                    }
-                }
-                if (link_id == null) {
-                    // how the fuck is the link id null, was it destroyed???
-                    console.log('smart harvester link somehow missing????? ' + creep.name + ' ' + creep.pos)
-                    return;
-                }
-                creep.memory.claimed_target = link_id;
-            }
-            const target = Game.getObjectById(creep.memory.claimed_target);
-            if (target.cooldown == 0 && target.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
-                // send to the master link
-                const masterTarget = Game.getObjectById(creep.room.memory.masterLink);
-                transErr = target.transferEnergy(masterTarget);
-                if (transErr != 0) {
-                    console.log('error with transfering energy to master ' + transErr)
-                }
-            }
+        const target = Game.getObjectById(creep.memory.claimed_target);
+        if (creep.store.getUsedCapacity() > 0) {
             // transfer to container
             const tErr = creep.transfer(target, RESOURCE_ENERGY);
             if (tErr == ERR_NOT_IN_RANGE) {
                 creep.moveTo(target, utils.movement_options);
             } else if (tErr != ERR_FULL && tErr != 0) {
                 console.log('smart harvester problem with transfer ' + tErr);
+            }
+
+            if (creep.memory.claimed_source != null && creep.pos.getRangeTo(Game.getObjectById(creep.memory.claimed_source)) <= 1) {
+                creep.memory.destId = creep.memory.claimed_source;
+                creep.memory.destLoc = creep.pos;
+            }
+        }
+        
+        if (target.cooldown == 0 && target.store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+            // send to the master link
+            const masterTarget = Game.getObjectById(creep.room.memory.masterLink);
+            transErr = target.transferEnergy(masterTarget);
+            if (transErr != 0) {
+                console.log('error with transfering energy to master ' + transErr)
             }
         }
     },
