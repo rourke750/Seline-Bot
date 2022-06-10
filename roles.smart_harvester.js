@@ -28,16 +28,13 @@ var roleSmartHarvester = {
     },
     
     run: function(creep) {
-        if (!utils.harvest_source(creep, false)) {
-            creep.memory.collecting = false;
-            utils.cleanup_move_to(creep);
-        }
+        utils.harvest_source(creep, false)
         // handles setting up the claimed source
         if (creep.memory.claimed_source == null) {
             creep.memory.claimed_source = creep.memory.destId;
         }
         // handles setting the linked_claim
-        if (creep.memory.claimed_target == null) {
+        if (creep.memory.claimed_source != null && creep.memory.claimed_target == null) {
             // the claimed target is null
             const x = Memory.rooms[creep.room.name].sources[creep.memory.claimed_source].container_x;
             const y = Memory.rooms[creep.room.name].sources[creep.memory.claimed_source].container_y;
@@ -59,6 +56,10 @@ var roleSmartHarvester = {
             creep.memory.claimed_target = link_id;
         }
 
+        if (creep.memory.claimed_target == null) {
+            return
+        }
+
         const target = Game.getObjectById(creep.memory.claimed_target);
         if (creep.store.getUsedCapacity() > 0) {
             // transfer to container
@@ -69,8 +70,22 @@ var roleSmartHarvester = {
                 console.log('smart harvester problem with transfer ' + tErr);
             }
 
-            if (creep.memory.claimed_source != null && creep.pos.getRangeTo(Game.getObjectById(creep.memory.claimed_source)) <= 1) {
-                creep.memory.destId = creep.memory.claimed_source;
+            // potentially the location initially picked for the smart creep is too far away to effeciently transfer energy
+            // let's try fix that if its the case
+            if (creep.memory.claimed_source != null && creep.pos.getRangeTo(Game.getObjectById(creep.memory.claimed_source)) > 1) {
+                // if we aren't in range lets load all the spots and get the closest to the link
+                const positions = creep.room.memory.sources[creep.memory.claimed_source].maxCreeps.positions;
+                for (const posK in positions) {
+                    const pv = positions[posK];
+                    const roomPos = creep.room.getPositionAt(pv[0], pv[1]);
+                    const v = roomPos.getRangeTo(target);
+                    if (v <= 1) {
+                        console.log('eeeeeek111 ' + creep.name + ' ' + creep.pos)
+                        creep.memory.destLoc = roomPos;
+                        break;
+                    }
+                }
+            } else if (creep.memory.claimed_source != null && creep.pos.getRangeTo(Game.getObjectById(creep.memory.claimed_source)) <= 1) {
                 creep.memory.destLoc = creep.pos;
             }
         }
