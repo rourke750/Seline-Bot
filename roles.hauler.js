@@ -17,14 +17,23 @@ var roleHauler = {
     },
     
     find_closest_structure: function(creep) {
-        //todo include containers
-        const objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
+        let objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                         filter: (structure) => {
                             return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN || 
-                                structure.structureType == STRUCTURE_CONTAINER || structure.structureType == STRUCTURE_TOWER) &&
+                                structure.structureType == STRUCTURE_TOWER) &&
                                 structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
                         }
                     });
+        if (!objs) {
+            // Let's see if there is a storage we can use
+            objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
+                filter: (structure) => {
+                    return (structure.structureType == STRUCTURE_CONTAINER && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0) ||
+                    (structure.structureType == STRUCTURE_STORAGE && structure.store.getUsedCapacity(RESOURCE_ENERGY) < 500000) 
+                    && structure.room.name == creep.room.name;
+                }
+            });
+        }
         return objs;
     },
     
@@ -135,9 +144,11 @@ var roleHauler = {
     },
 	
 	create_creep: function(spawn) {
-        var newName = 'Hauler' + Game.time;
-        if (spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_smart_hauler][1], newName,
-            {memory: {role: 'hauler', collecting: true, home_room: spawn.room.name}}) == 0) {
+        var newName = 'Hauler' + Game.time + spawn.name.charAt(spawn.name.length - 1);
+        spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_smart_hauler][1], newName,
+            {memory: {role: 'hauler', collecting: true, home_room: spawn.room.name}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
         }
     },
     
@@ -151,7 +162,7 @@ var roleHauler = {
             return;
         }
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_smart_hauler][2];
-        if (current_upgrade_cost > energy_available) {
+        if (current_upgrade_cost > energy_available && room.memory.upgrade_pos_scout != 0) {
             // attacked need to downgrade
             room.memory.upgrade_pos_smart_hauler = build_creeps[build_creeps[room.memory.upgrade_pos_smart_hauler][0] - 1][0];
         } else if (energy_available >= current_upgrade_cost && 

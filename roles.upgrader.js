@@ -51,9 +51,12 @@ var roleUpgrader = {
 	},
 	
 	create_creep: function(spawn) {
-        var newName = 'Upgrader' + Game.time;
+        var newName = 'Upgrader' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_upgrader][1], newName,
-            {memory: {role: 'upgrader', upgrading: false, home_room: spawn.room.name}}); 
+            {memory: {role: 'upgrader', upgrading: false, home_room: spawn.room.name}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
+        }
     },
     
     upgrade: function(room) {

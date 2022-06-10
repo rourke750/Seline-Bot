@@ -1,4 +1,5 @@
 var utils = require('utils');
+const utilscreep = require('utilscreep');
 
 const normal_creep = [WORK, CARRY, MOVE];
 const big_creep = [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE];
@@ -30,7 +31,7 @@ var roleHarvester = {
     find_closest_structure: function(creep) {
         const containerPosX = creep.room.memory.spawnMasterX;
         const containerPosY = creep.room.memory.spawnMasterY;
-        const objs = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
+        let objs = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
                         filter: (structure) => {
                             const collectorStruct = structure.structureType == STRUCTURE_CONTAINER && structure.pos.x == containerPosX && 
                                 structure.pos.y == containerPosY;
@@ -38,7 +39,16 @@ var roleHarvester = {
                                 structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
                         }
                     });
-        if (objs == null) {
+        if (!objs) {
+            // Let's see if there is a storage we can use
+            objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
+                filter: (structure) => {
+                    return structure.structureType == STRUCTURE_STORAGE && structure.store.getUsedCapacity(RESOURCE_ENERGY) < 500000 
+                    && structure.room.name == creep.room.name;
+                }
+            });
+        }
+        if (!objs) {
             const targets = creep.room.find(FIND_STRUCTURES, {
                 filter: (structure) => {
                     return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
@@ -110,9 +120,12 @@ var roleHarvester = {
 	},
 	
 	create_creep: function(spawn) {
-        var newName = 'Harvester' + Game.time;
+        var newName = 'Harvester' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_harvester][1], newName,
             {memory: {role: 'harvester', collecting: true, home_room: spawn.room.name}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
+        }
     },
     
     upgrade: function(room) {
@@ -129,7 +142,7 @@ var roleHarvester = {
             // attacked need to downgrade
             room.memory.upgrade_pos_harvester = build_creeps[build_creeps[room.memory.upgrade_pos_harvester][0] - 1][0];
         } else if (room.energyAvailable <= current_upgrade_cost && build_creeps[room.memory.upgrade_pos_harvester][0] > 0 &&
-            _.filter(utils.get_filtered_creeps('harvester'), (creep) => creep.memory.home_room == room.name).length < 3) {
+            _.filter(utilscreep.get_filtered_creeps('harvester'), (creep) => creep.memory.home_room == room.name).length < 3) {
             // todo this might be bouncing back and forth investigate
             // we don't have any more harvesters let's try downgrade build some up and re up
             room.memory.upgrade_pos_harvester = build_creeps[build_creeps[room.memory.upgrade_pos_harvester][0] - 1][0];

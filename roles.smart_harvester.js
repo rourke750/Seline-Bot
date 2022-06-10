@@ -35,7 +35,7 @@ var roleSmartHarvester = {
             utils.cleanup_move_to(creep);
             // reset destId if the claimed source is not null
             // we do this so the creep doesnt move back to an area around the source that it had previously been set to
-            if (creep.memory.claimed_source != null) {
+            if (creep.memory.claimed_source != null && creep.pos.getRangeTo(Game.getObjectById(creep.memory.claimed_source)) <= 1) {
                 creep.memory.destId = creep.memory.claimed_source;
                 creep.memory.destLoc = creep.pos;
             }
@@ -53,6 +53,9 @@ var roleSmartHarvester = {
                 if (creep.memory.claimed_source == null && creep.memory.destId != null) {
                     creep.memory.claimed_source = creep.memory.destId;
                     creep.memory.claimed_source_loc = creep.memory.destLoc;
+                }
+                if (creep.name == 'Smart-Harvester46672231') {
+                    
                 }
             }
         } 
@@ -74,7 +77,7 @@ var roleSmartHarvester = {
                 }
                 if (link_id == null) {
                     // how the fuck is the link id null, was it destroyed???
-                    console.log('smart harvester link somehow missing?????')
+                    console.log('smart harvester link somehow missing????? ' + creep.name + ' ' + creep.pos)
                     return;
                 }
                 creep.memory.claimed_target = link_id;
@@ -99,19 +102,12 @@ var roleSmartHarvester = {
     },
 	
 	create_creep: function(spawn) {
-        var newName = 'Smart-Harvester' + Game.time;
-        if (spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_smart_harvester][1], newName,
-            {memory: {role: 'smartHarvester', collecting: true, claimed_source: null, home_room: spawn.room.name}}) == 0) {
-            // lets go ahead and claim a source
-            /*
-            const creep = Game.creeps[newName];
-            for (const sourceId in Memory.rooms[room.name].sources) {
-                const s = Memory.rooms[room.name].sources[sourceId];
-                if (s.finished) {
-                    // todo find a source that isnt being used by another smart harvester
-                }
-            }
-            */
+        var newName = 'Smart-Harvester' + Game.time + spawn.name.charAt(spawn.name.length - 1);
+        spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_smart_harvester][1], newName,
+            {memory: {role: 'smartHarvester', collecting: true, claimed_source: null, home_room: spawn.room.name}})
+
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
         }
     },
     
@@ -125,7 +121,7 @@ var roleSmartHarvester = {
             return;
         }
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_smart_harvester][2];
-        if (current_upgrade_cost > energy_available) {
+        if (current_upgrade_cost > energy_available && room.memory.upgrade_pos_scout != 0) {
             // attacked need to downgrade
             room.memory.upgrade_pos_smart_harvester = build_creeps[build_creeps[room.memory.upgrade_pos_smart_harvester][0] - 1][0];
         } else if (energy_available >= current_upgrade_cost && 

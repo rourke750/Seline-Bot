@@ -53,6 +53,7 @@ var militaryScout = {
         }
         
         if (creep.memory.destLoc.roomName != creep.pos.roomName) {
+            
             utils.move_to(creep, this.get_room_controller);
         } else {
             const obj = Game.getObjectById(creep.memory.destId);
@@ -70,9 +71,12 @@ var militaryScout = {
     },
 	
 	create_creep: function(spawn) {
-        var newName = 'Scout' + Game.time;
+        var newName = 'Scout' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_scout][1], newName,
             {memory: {role: 'scout', capture: false}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
+        }
     },
     
     upgrade: function(room) {
@@ -85,7 +89,7 @@ var militaryScout = {
             return;
         }
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_scout][2];
-        if (current_upgrade_cost > energy_available) {
+        if (current_upgrade_cost > energy_available && room.memory.upgrade_pos_scout != 0) {
             // attacked need to downgrade
             room.memory.upgrade_pos_scout = build_creeps[build_creeps[room.memory.upgrade_pos_scout][0] - 1][0];
         } else if (energy_available >= current_upgrade_cost && 

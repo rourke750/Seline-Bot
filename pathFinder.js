@@ -54,7 +54,7 @@ const pathGenerator = {
             }
         )
         if (v.incomplete) {
-            console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' avoid creeps ' + opts.avoidCreep +' paths ' + v.path)
+            //console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' avoid creeps ' + opts.avoidCreep +' paths ' + v.path)
         }
         if (v.path.length == 0) {
             console.log('Zero path ' + creep.name + ' ' + creep.pos + ' to ' + dstX + ' ' + dstY + ' cost ' +v.cost + ' range ' + range)
@@ -139,7 +139,7 @@ const pathGenerator = {
             // now what we want to do is serialize for memory saving
             const serializedRoomPaths = {};
             for (const r in roomsPaths) {
-                serializedRoomPaths[r] = Room.serializePath(roomsPaths[r]);
+                serializedRoomPaths[r] = Room.serializePath(roomsPaths[r].slice(1));
             }
             
             Memory.highway[pos.roomName][dstRoom].paths = serializedRoomPaths;

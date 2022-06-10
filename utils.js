@@ -42,41 +42,6 @@ var utils = {
         return positions;
     },
     
-    get_filtered_creeps: function(role) {
-        if (!(role in filtered_mapping)) {
-            // doesnt exist lets add it
-            filtered_mapping[role] = _.filter(Game.creeps, (creep) => creep.memory.role == role);
-        }
-        return filtered_mapping[role];
-    },
-
-    get_home_filtered_creeps: function(home) {
-        if (!(home in filtered_homeroom_mappings)) {
-            // doesnt exist lets add it
-            filtered_homeroom_mappings[home] = _.filter(Game.creeps, (creep) => creep.memory.home_room == home);
-        }
-        return filtered_homeroom_mappings[home];
-    },
-    
-    clear_filtered_creeps: function() {
-        filtered_mapping = {};
-        filtered_homeroom_mappings = {};
-        for (const k in Game.creeps) {
-            const v = Game.creeps[k];
-            const r = v.memory.role;
-            if (!(r in filtered_mapping)) {
-                filtered_mapping[r] = [];
-            }
-
-            const h = v.memory.home_room;
-            if (!(h in filtered_homeroom_mappings)) {
-                filtered_homeroom_mappings[h] = [];
-            }
-            filtered_mapping[r].push(v);
-            filtered_homeroom_mappings[h].push(v);
-        }
-    },
-    
     recycle_creep: function(creep) {
         // attempt to move the creep to spawner for recycling.
         // if it is not close enough move it closer.
@@ -283,10 +248,6 @@ var utils = {
             Memory.rooms[position.roomName].sources[destId].creeps[creep.name].maxCreepsIndexPosition = creep.memory.maxCreepsIndexPosition;
         }
         
-        //if (Object.keys(Memory.rooms[position.roomName].sources[destId].creeps).length > 4) {
-            //console.log(position.roomName + ' ' + destId + ' '  + Object.keys(Memory.rooms[position.roomName].sources[destId].creeps))
-        //}
-        
         if (position.roomName != creep.pos.roomName) {
             this.move_to(creep);
             return true;
@@ -354,8 +315,7 @@ var utils = {
         const p = pathFinder.find_path_in_room(creep, 
             creep.memory.dstRoomPath.start.x, 
             creep.memory.dstRoomPath.start.y);
-        //roomPosArray[creep.room.name] = Room.serializePath(creep.pos.findPathTo(creep.memory.dstRoomPath.start.x, 
-        //    creep.memory.dstRoomPath.start.y, this.movement_options));
+
         roomPosArray[creep.room.name] = p;
         roomPosArray[dstRoom] = null;
         
@@ -414,10 +374,14 @@ var utils = {
                 // if we have a function this should normally be for coming into destination room
                 const newP = pathFinder.find_path_in_room(creep, target.pos.x, target.pos.y);
                 creep.memory.current_path[creep.pos.roomName] = newP;
-            } else if (v[0] != null && v[1] != null) {
+            } else if (v[0] != null && v[1] != null && v[2] == creep.room.name) {
                 // if we dont have a new roomfunc used for calculating where to go next we will instead use the saved cords for returning
                 const newP = pathFinder.find_path_in_room(creep, v[0], v[1]);
                 creep.memory.current_path[creep.pos.roomName] = newP;
+            } else {
+                console.log('eeeeeeeeeeeeeeeeeeek utils')
+                utils.cleanup_move_to(creep);
+                return;
             }
             p = creep.memory.current_path[creep.pos.roomName];
         }
@@ -426,8 +390,12 @@ var utils = {
             const errCode = creep.moveByPath(p);
             creep.memory.last_pos = creep.pos;
             if (errCode == ERR_NOT_FOUND) {
+                return;
                 //creep.memory.current_path = {};
                 if (v[2] != creep.room.name) {
+                    if (creep.name.startsWith('Scout')) {
+                        console.log('beep8')
+                    }
                     this.cleanup_move_to(creep);
                     return;
                 }

@@ -90,9 +90,12 @@ var roleRepairer = {
 	},
 	
 	create_creep: function(spawn) {
-        var newName = 'Repairer' + Game.time;
+        var newName = 'Repairer' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_repairer][1], newName,
             {memory: {role: 'repairer', repairing: false, home_room: spawn.room.name}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
+        }
     },
     
     upgrade: function(room) {
