@@ -80,7 +80,7 @@ var roleSmartHarvester = {
                     const roomPos = creep.room.getPositionAt(pv[0], pv[1]);
                     const v = roomPos.getRangeTo(target);
                     if (v <= 1) {
-                        console.log('eeeeeek111 ' + creep.name + ' ' + creep.pos)
+                        console.log('smart harvester eeeeeek1 ' + creep.name + ' ' + creep.pos)
                         creep.memory.destLoc = roomPos;
                         break;
                     }
