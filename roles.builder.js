@@ -3,11 +3,15 @@ var utils = require('utils');
 const normal_creep = [WORK, CARRY, MOVE]; // 200
 const big_creep = [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE]; // 550
 const bigger_creep = [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE] // 800
+const bigger_creeper = [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, 
+                        CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY,
+                        MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE] // 800
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)],
     [1, big_creep, utils.get_creep_cost(big_creep)],
-    [2, bigger_creep, utils.get_creep_cost(bigger_creep)]
+    [2, bigger_creep, utils.get_creep_cost(bigger_creep)],
+    [3, bigger_creeper, utils.get_creep_cost(bigger_creeper)]
 ]
 
 var roleBuilder = {
@@ -28,7 +32,14 @@ var roleBuilder = {
         return val;
     },
 
-    /** @param {Creep} creep **/
+    findConstructSite: function(creep) {
+        return creep.pos.findClosestByRange(FIND_CONSTRUCTION_SITES, {
+            filter: (structure) => {
+                return structure.room.name == creep.room.name;
+            }
+        });
+    },
+
     run: function(creep) {
         if (creep.memory.building && creep.store[RESOURCE_ENERGY] == 0) {
             creep.memory.building = false;
@@ -42,12 +53,13 @@ var roleBuilder = {
             }
         }
         if (creep.memory.building) {
+            if (creep.room.name != creep.memory.home_room) {
+                creep.memory.destLoc = {roomName: creep.memory.home_room};
+                utils.move_to(creep, this.findConstructSite);
+                return;
+            }
             if (creep.memory.destId == null) {
-                const con = creep.pos.findClosestByRange(FIND_CONSTRUCTION_SITES, {
-                        filter: (structure) => {
-                            return structure.room.name == creep.room.name;
-                        }
-                    });
+                const con = this.findConstructSite(creep);
                 if (con != null) {
     	            creep.memory.destId = con.id;
                 }
@@ -61,7 +73,7 @@ var roleBuilder = {
                 } else {
                     const buildErr = creep.build(source);
                     if (buildErr == ERR_NOT_IN_RANGE) {
-                        utils.move_to(creep);
+                        utils.move_to(creep, this.findConstructSite);
                     } else if (buildErr == ERR_INVALID_TARGET) {
                         utils.cleanup_move_to(creep);
                     }
@@ -73,10 +85,14 @@ var roleBuilder = {
 	    }
 	},
 	
-	create_creep: function(spawn) {
-        var newName = 'Builder' + Game.time;
+	create_creep: function(spawn, homeRoom=null) {
+        homeRoom = homeRoom || spawn.room.name;
+        var newName = 'Builder' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_builder][1], newName,
-            {memory: {role: 'builder', building: false}});
+            {memory: {role: 'builder', building: false, home_room: homeRoom}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
+        }
     },
     
     upgrade: function(room) {

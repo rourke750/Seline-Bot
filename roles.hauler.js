@@ -17,13 +17,23 @@ var roleHauler = {
     },
     
     find_closest_structure: function(creep) {
-        //todo include containers
-        const objs = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
+        let objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                         filter: (structure) => {
-                            return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
+                            return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN || 
+                                structure.structureType == STRUCTURE_TOWER) &&
                                 structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
                         }
                     });
+        if (!objs) {
+            // Let's see if there is a storage we can use
+            objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
+                filter: (structure) => {
+                    return (structure.structureType == STRUCTURE_CONTAINER && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0) ||
+                    (structure.structureType == STRUCTURE_STORAGE && structure.store.getUsedCapacity(RESOURCE_ENERGY) < 500000) 
+                    && structure.room.name == creep.room.name;
+                }
+            });
+        }
         return objs;
     },
     
@@ -69,7 +79,19 @@ var roleHauler = {
                     creep.memory.collecting = false;
                     utils.cleanup_move_to(creep);
                 } else {
-                    // link has no energy, we have no energy, lets just wait
+                    // link has no energy, we have no energy, lets move to the right of the link and wait there
+                    const link = Game.getObjectById(creep.room.memory.masterLink);
+                    const pos = link.pos;
+                    pos.x += 1
+                    if (creep.memory.destId != link.id) {
+                        utils.cleanup_move_to(creep);
+                        creep.memory.destId = link.id;
+                        creep.memory.destLoc = link.pos;
+                    }
+                    if (!creep.pos.isEqualTo(pos)) {
+                        // only move when we are not in the spot
+                        utils.move_to(creep);
+                    }
                     return;
                 }
                 
@@ -79,11 +101,25 @@ var roleHauler = {
 
         // if we are not collecting energy then lets start dispensing it
         if (!creep.memory.collecting) {
-            if (creep.memory.destId == null && creep.memory.destLoc == null) {
+            if ((creep.memory.destId == null && creep.memory.destLoc == null) || creep.memory.destId == creep.room.memory.masterLink) {
                 // do we have a destination, if not lets find one
                 const target = this.find_closest_structure(creep);
                 if (target == null) {
-                    // do nothing shiat
+                    // no target go sit
+                    // it's fine to let the bottom code run even if its already set as its really cheap to run if we are at the location
+                    // and destId is already link.id
+                    const link = Game.getObjectById(creep.room.memory.masterLink);
+                    const pos = link.pos;
+                    pos.x += 1
+                    if (creep.memory.destId != link.id) {
+                        utils.cleanup_move_to(creep);
+                        creep.memory.destId = link.id;
+                        creep.memory.destLoc = link.pos;
+                    }
+                    if (!creep.pos.isEqualTo(pos)) {
+                        // only move when we are not in the spot
+                        utils.move_to(creep);
+                    }
                     return;
                 }
                 creep.memory.destId = target.id;
@@ -108,9 +144,11 @@ var roleHauler = {
     },
 	
 	create_creep: function(spawn) {
-        var newName = 'Hauler' + Game.time;
-        if (spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_smart_hauler][1], newName,
-            {memory: {role: 'hauler', collecting: true, home_room: spawn.room.name}}) == 0) {
+        var newName = 'Hauler' + Game.time + spawn.name.charAt(spawn.name.length - 1);
+        spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_smart_hauler][1], newName,
+            {memory: {role: 'hauler', collecting: true, home_room: spawn.room.name}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
         }
     },
     
@@ -124,7 +162,7 @@ var roleHauler = {
             return;
         }
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_smart_hauler][2];
-        if (current_upgrade_cost > energy_available) {
+        if (current_upgrade_cost > energy_available && room.memory.upgrade_pos_scout != 0) {
             // attacked need to downgrade
             room.memory.upgrade_pos_smart_hauler = build_creeps[build_creeps[room.memory.upgrade_pos_smart_hauler][0] - 1][0];
         } else if (energy_available >= current_upgrade_cost && 

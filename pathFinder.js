@@ -11,6 +11,11 @@ const pathGenerator = {
         }
         opts.maxOps = opts.maxOps || 2000;
         opts.avoidCreep = opts.avoidCreep || false;
+
+        if (creep.pos.x == dstX && creep.pos.y == dstY) {
+            return Room.serializePath([]);
+        }
+
         // get the cost matrix for the room
         // check if in cache
         let range = 0
@@ -49,7 +54,7 @@ const pathGenerator = {
             }
         )
         if (v.incomplete) {
-            console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' avoid creeps ' + opts.avoidCreep +' paths ' + v.path)
+            //console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' avoid creeps ' + opts.avoidCreep +' paths ' + v.path)
         }
         if (v.path.length == 0) {
             console.log('Zero path ' + creep.name + ' ' + creep.pos + ' to ' + dstX + ' ' + dstY + ' cost ' +v.cost + ' range ' + range)
@@ -59,6 +64,9 @@ const pathGenerator = {
         }
         //console.log('aaaaaaaa ' + v.path)
         const convertedPath = this.convertPathFinderSearch(creep.pos, v.path)
+        if (!(creep.room.name in convertedPath)) {
+            return Room.serializePath([]);
+        }
         const p = Room.serializePath(convertedPath[creep.room.name]);
         return p;
     },
@@ -131,7 +139,7 @@ const pathGenerator = {
             // now what we want to do is serialize for memory saving
             const serializedRoomPaths = {};
             for (const r in roomsPaths) {
-                serializedRoomPaths[r] = Room.serializePath(roomsPaths[r]);
+                serializedRoomPaths[r] = Room.serializePath(roomsPaths[r].slice(1));
             }
             
             Memory.highway[pos.roomName][dstRoom].paths = serializedRoomPaths;
@@ -194,7 +202,7 @@ const pathGenerator = {
         return resultPath;
     },
     
-    build_cost_matrix: function(roomName) {
+    build_cost_matrix: function(roomName, override=false) {
         // We want to build a cost matrix per room and then save to memory
         
         // todo in the future we will want to be able to invalidate a room
@@ -203,7 +211,7 @@ const pathGenerator = {
             Memory.costMatrix = {};
         }
         
-        if (roomName in Memory.costMatrix)
+        if (roomName in Memory.costMatrix && !override)
             return true
         
         let room = Game.rooms[roomName];
@@ -221,6 +229,12 @@ const pathGenerator = {
             // Can't walk through non-walkable buildings
             costs.set(struct.pos.x, struct.pos.y, 0xff);
           }
+        });
+
+        room.find(FIND_CONSTRUCTION_SITES).forEach(function(struct) {
+            if (struct.structureType in obsticalD) {
+                costs.set(struct.pos.x, struct.pos.y, 0xff);
+            }
         });
 
         // Avoid creeps in the room

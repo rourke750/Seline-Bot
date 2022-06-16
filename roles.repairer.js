@@ -1,7 +1,7 @@
 var utils = require('utils');
 
 const normal_creep = [WORK, CARRY, MOVE];
-const big_creep = [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE];
+const big_creep = [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE];
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)],
@@ -76,7 +76,7 @@ var roleRepairer = {
                 else if (source.hits != null) {
                     const buildErr = creep.repair(source);
                     if (buildErr == ERR_NOT_IN_RANGE) {
-                        utils.move_to(creep);
+                        utils.move_to(creep, this.find_repairs);
                     } else if (buildErr == ERR_INVALID_TARGET) {
                         utils.cleanup_move_to(creep);
                     }
@@ -90,9 +90,12 @@ var roleRepairer = {
 	},
 	
 	create_creep: function(spawn) {
-        var newName = 'Repairer' + Game.time;
+        var newName = 'Repairer' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_repairer][1], newName,
             {memory: {role: 'repairer', repairing: false, home_room: spawn.room.name}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
+        }
     },
     
     upgrade: function(room) {

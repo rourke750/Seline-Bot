@@ -21,9 +21,12 @@ var militaryDefender = {
     },
 	
 	create_creep: function(spawn) {
-        var newName = 'Defender' + Game.time;
+        var newName = 'Defender' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_defender][1], newName,
             {memory: {role: 'defender'}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
+        }
     },
     
     upgrade: function(room) {
@@ -36,7 +39,7 @@ var militaryDefender = {
             return;
         }
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_defender][2];
-        if (current_upgrade_cost > energy_available) {
+        if (current_upgrade_cost > energy_available && room.memory.upgrade_pos_scout != 0) {
             // attacked need to downgrade
             room.memory.upgrade_pos_defender = build_creeps[build_creeps[room.memory.upgrade_pos_defender][0] - 1][0];
         } else if (energy_available >= current_upgrade_cost && 

@@ -2,19 +2,25 @@ var utils = require('utils');
 
 const normal_creep = [WORK, CARRY, MOVE];
 const big_creep = [WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE];
-const bigger_creep = [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE] // 800
+const bigger_creep = [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE]; // 800
+const biggerr_creep = [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, 
+    CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE];
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)],
     [1, big_creep, utils.get_creep_cost(big_creep)],
-    [2, bigger_creep, utils.get_creep_cost(bigger_creep)]
+    [2, bigger_creep, utils.get_creep_cost(bigger_creep)],
+    [3, biggerr_creep, utils.get_creep_cost(biggerr_creep)]
 ]
 
 var roleUpgrader = {
     
     get_harvest_count: function(room) {
         // todo get the amount of repairs needed and spawn based on it
-        return 2
+        if (room.controller.my && room.controller.level < 8) {
+            return 6;
+        }
+        return 2;
     },
     
     get_main_upgrader: function(creep) {
@@ -45,9 +51,12 @@ var roleUpgrader = {
 	},
 	
 	create_creep: function(spawn) {
-        var newName = 'Upgrader' + Game.time;
+        var newName = 'Upgrader' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_upgrader][1], newName,
-            {memory: {role: 'upgrader', upgrading: false, home_room: spawn.room.name}}); 
+            {memory: {role: 'upgrader', upgrading: false, home_room: spawn.room.name}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
+        }
     },
     
     upgrade: function(room) {

@@ -1,7 +1,41 @@
 const utils = require('utils');
 const common = require('common');
+const pathFinder = require('pathFinder');
+
+const obsticalD = {};
+for (ob in OBSTACLE_OBJECT_TYPES) {
+    obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
+}
  
 var construction = {
+
+    build_missing_spawn: function(room) {
+        if (room.controller.my && room.memory.spawnMaster == null && room.name in Memory.flags.capture) {
+            // let's try place a master spawn
+            // lets see if there is a flag we were just captured
+            const flags = room.find(FIND_FLAGS);
+            let f = null;
+            for (const fK in flags) {
+                const flag = flags[fK];
+                if (flag.name.startsWith('Capture')) {
+                    f = flag;
+                    break
+                }
+            }
+            room.memory['spawnMasterX'] = f.pos.x;
+            room.memory['spawnMasterY'] = f.pos.y;
+            room.memory['spawnMaster'] = `${room.name}-1`;
+            this.buildSpawnCenter(room);
+            f.remove();
+        }
+    },
+
+    doesConstructionExistAndCantBuild: function(room, pos) { // return true if there is already a struct there or a construction site
+        const struct = room.lookForAt(LOOK_STRUCTURES, pos.x, pos.y);
+        const c = room.lookForAt(LOOK_CONSTRUCTION_SITES, pos.x, pos.y);
+
+        return (c.length > 0 || (struct.length > 0 && struct[0].structureType in obsticalD))
+    },
 
     // build a link near the spawns and roads that are needed
     buildAuxNearSpawn: function(room) {
@@ -31,10 +65,35 @@ var construction = {
             let positions = utils.buildLineDirection(room.memory.spawnMasterX, room.memory.spawnMasterY+1, i, 4)
             for (const ii in positions) {
                 const v = positions[ii];
+                if (this.doesConstructionExistAndCantBuild(room, v)) // if we are already constructing we do not want to call this method
+                    continue;
                 room.getPositionAt(v[0], v[1]).createConstructionSite(STRUCTURE_ROAD);
             }
         }
         room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+1).createConstructionSite(STRUCTURE_ROAD);
+
+        // build roads around spawns
+        const posOffset = [[0, 3], [-1, -2], [0, -1], [1, 4]]
+        for (let i = 1; i <= 7; i += 2) {
+            const pOff = posOffset[parseInt(i/2)]
+            let positions = utils.buildLineDirection(room.memory.spawnMasterX + pOff[0], room.memory.spawnMasterY+pOff[1], i, 2)
+            for (const ii in positions) {
+                const v = positions[ii];
+                if (this.doesConstructionExistAndCantBuild(room, v))
+                    continue;
+                room.getPositionAt(v[0], v[1]).createConstructionSite(STRUCTURE_ROAD);
+            }
+            //new RoomVisual(room.name).poly(positions, {stroke: '#000000', strokeWidth: .8, 
+            //    opacity: .9});
+        }
+
+        // build defense towers
+
+        // build storage container
+        const containerLoc = room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+1);
+        containerLoc.createConstructionSite(STRUCTURE_CONTAINER);
+
+        // build main storage
     },
 
     // This function handles building the spawn
@@ -79,25 +138,27 @@ var construction = {
             return
         }
         // check for bottom left spawn if we can build it
-        
-        if (!this.find_spawns_at_pos(room.getPositionAt(m.pos.x-1, m.pos.y+1))) { // didnt find a spawn lets build it
+
+        let secondLocation = room.getPositionAt(m.pos.x-1, m.pos.y+1);
+        if (!this.find_spawns_at_pos(room, secondLocation)) { // didnt find a spawn lets build it
             const n = `${room.name}-2`;
             secondLocation.createConstructionSite(STRUCTURE_SPAWN, n);
         }
         // check for bottom right spawn if we can build it
-        if (!this.find_spawns_at_pos(room.getPositionAt(m.pos.x+1, m.pos.y+1))) { // didnt find a spawn lets build it
+        secondLocation = room.getPositionAt(m.pos.x+1, m.pos.y+1);
+        if (!this.find_spawns_at_pos(room, secondLocation)) { // didnt find a spawn lets build it
             const n = `${room.name}-3`;
             secondLocation.createConstructionSite(STRUCTURE_SPAWN, n);
         }
     },
 
-    find_spawns_at_pos: function(pos) {
+    find_spawns_at_pos: function(room, pos) {
         const secondLocation = room.lookAt(pos);
         for (const sL in secondLocation) {
             const sV = secondLocation[sL];
             if (sV.type == LOOK_STRUCTURES && sV.structure.structureType == 'spawn') {
                 return true;
-            } else if (sV.type == LOOK_CONSTRUCTION_SITES && sV.constructionSite.constructionSite.structureType == 'spawn') {
+            } else if (sV.type == LOOK_CONSTRUCTION_SITES && sV.constructionSite.structureType == 'spawn') {
                 return true;
             }
         }
@@ -256,6 +317,41 @@ var construction = {
         //new RoomVisual(room.name).poly(positions, {stroke: '#fff', strokeWidth: .15,
           //      opacity: .2, lineStyle: 'dashed'});
     },
+
+    buildRoadFromMasterSpawnToSources: function(room) {
+        if (room.memory.spawnMaster == null || !room.controller.my) {
+            return;
+        }
+        const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
+        const sources = room.find(FIND_SOURCES);
+        for (const sourceKey in sources) {
+            const sourceV = sources[sourceKey];
+            const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, sourceV.pos.x, sourceV.pos.y))
+            for (var i = 0; i < paths.length; i++) {
+                const path = paths[i];
+                const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
+                if (ter != 'wall') {
+                    room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
+                }
+            }
+        }
+    },
+
+    buildRoadsFromMasterSpawnToController: function(room) {
+        if (room.memory.spawnMaster == null || !room.controller.my) {
+            return;
+        }
+        const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
+        
+        const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, room.controller.pos.x, room.controller.pos.y))
+        for (var i = 0; i < paths.length; i++) {
+            const path = paths[i];
+            const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
+            if (ter != 'wall') {
+                room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
+            }
+        }
+    },
     
     build_roads_from_source: function(source) {
         if (!source.room.controller.my) {
@@ -342,6 +438,33 @@ var construction = {
                 }
                 if (impassible)
                     road_paths[k].destroy();
+            }
+        }
+    },
+
+    buildRoadsFromMasterSpawnToExits: function(room) {
+        // first let's check check highway
+        if (Memory.highway == null || !room.controller.my) {
+            // no highway just exit
+            return;
+        }
+
+        const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
+
+        const currentRoom = Memory.highway[room.name];
+        for (const roomK in currentRoom) {
+            const roomV = currentRoom[roomK];
+            const start = roomV.start;
+            if (start != null) {
+                // build road from master spawn to start
+                const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, start.x, start.y))
+                for (var i = 0; i < paths.length; i++) {
+                    const path = paths[i];
+                    const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
+                    if (ter != 'wall') {
+                        room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
+                    }
+                }
             }
         }
     }
