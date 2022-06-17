@@ -1,6 +1,7 @@
 const utils = require('utils');
 const common = require('common');
 const pathFinder = require('pathFinder');
+const os = require('os');
 
 const obsticalD = {};
 for (ob in OBSTACLE_OBJECT_TYPES) {
@@ -466,6 +467,38 @@ var construction = {
                     }
                 }
             }
+        }
+    },
+
+    generateThreads: function(room) {
+        let name = 'construction-' + room.name + '-build_missing_spawn';
+        if (!os.existsThread(name)) {
+            const f = function() {
+                construction.build_missing_spawn(room);
+            } 
+            os.newThread(name, f, 5);
+        }
+
+        name = 'construction-' + room.name + '-build_aux';
+        if (!os.existsThread(name)) {
+            const f = function() {
+                construction.buildSpawnCenter(room); // hanldes building the spawns
+                construction.build_extensions(room); // hanldes building the extensions
+                // handles building the roads to extensions, towers, link near spawn, other center piece stuff
+                construction.buildAuxNearSpawn(room);
+                construction.buildRoadsFromMasterSpawnToExits(room);
+                construction.buildRoadFromMasterSpawnToSources(room);
+                construction.buildRoadsFromMasterSpawnToController(room);
+            } 
+            os.newTimedThread(name, f, 10, 1, 20); // spawn a new timed thread that runs every 20 ticks
+        }
+
+        name = 'construction-' + room.name + '-remove_old_roads';
+        if (!os.existsThread(name)) {
+            const f = function() {
+                construction.remove_old_roads(room);
+            } 
+            os.newTimedThread(name, f, 10, 1, 30); // spawn a new timed thread that runs every 20 ticks
         }
     }
 }

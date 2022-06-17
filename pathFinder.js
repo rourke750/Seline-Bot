@@ -1,3 +1,5 @@
+const os = require('os');
+
 const obsticalD = {};
 for (ob in OBSTACLE_OBJECT_TYPES) {
     obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
@@ -244,5 +246,16 @@ const pathGenerator = {
         Memory.costMatrix[roomName] = costs.serialize();
         return true;
     },
+
+    generateThreads: function(roomName) {
+        let name = 'pathFinder-' + roomName + '-build_cost_matrix';
+        if (!os.existsThread(name)) {
+            const f = function() {
+                pathGenerator.build_cost_matrix(roomName, true);
+            }
+            os.newTimedThread(name, f, 10, 0, 40); // spawn a new timed thread that runs every 40 ticks
+        }
+        
+    }
 };
 module.exports = pathGenerator;
