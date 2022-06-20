@@ -70,7 +70,7 @@ class TimedThread extends Thread {
     tick() {
         this.delay -= 1; // this can become negative and will lower the value which is intentional
         if (this.value() < -10) {
-            console.log('I AM BEING IGNORED TIMED')
+            console.log('I AM BEING IGNORED TIMED ' + this.name);
         }
     }
 }
@@ -203,11 +203,17 @@ var Threads = {
             readd.push(v)
             if (!v.shouldRun())
                 break;
-            v.run();
+
+            try {
+                v.run();
+            } catch (error) {
+                console.log(error + '\n' + error.stack)
+            }
+
             //console.log(v.name + ' ' +v.value() + ' ' + i);
             // going to check usage and if its greater than 30 break for now
             if (Game.cpu.getUsed() - start >= 30) {
-                console.log('os cpu usage exceeding skipping')
+                //console.log('os cpu usage exceeding skipping')
                 break;
             }
         }

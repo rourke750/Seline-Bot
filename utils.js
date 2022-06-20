@@ -327,7 +327,7 @@ var utils = {
         delete creep.memory.dstRoomPath; // it is no longer needed get rid of it
     },
     
-    move_to: function(creep, newRoomFunc = null) {
+    move_to: function(creep, newRoomFunc = null, avoidCreepIfStuck=true) {
         // hanldes destinations even in other rooms
         const v = this.move_to_helper(creep);
         if (creep.memory.current_path == null || creep.memory.current_path == undefined) {
@@ -344,7 +344,7 @@ var utils = {
         
         // below code is beginning steps if we are stuck in position, in the future we can try ask the offending creep to move out the way
         if (creep.memory.last_pos != null && creep.pos.isEqualTo(creep.memory.last_pos.x, creep.memory.last_pos.y) 
-            && creep.fatigue == 0) {
+            && creep.fatigue == 0 && avoidCreepIfStuck) {
             // get the path we are currently traveling
             const sePath = creep.memory.current_path[creep.room.name];
             if (sePath != "" && sePath != null) {

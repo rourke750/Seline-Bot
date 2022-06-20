@@ -83,14 +83,14 @@ var roleHauler = {
                     const link = Game.getObjectById(creep.room.memory.masterLink);
                     const pos = link.pos;
                     pos.x += 1
-                    if (creep.memory.destId != link.id) {
+                    const creepDstPos = creep.memory.destLoc;
+                    if (creepDstPos == null || !pos.isEqualTo(creepDstPos.x, creepDstPos.y)) {
                         utils.cleanup_move_to(creep);
-                        creep.memory.destId = link.id;
-                        creep.memory.destLoc = link.pos;
+                        creep.memory.destLoc = pos;
                     }
                     if (!creep.pos.isEqualTo(pos)) {
                         // only move when we are not in the spot
-                        utils.move_to(creep);
+                        creep.moveTo(pos.x, pos.y)
                     }
                     return;
                 }
@@ -101,7 +101,7 @@ var roleHauler = {
 
         // if we are not collecting energy then lets start dispensing it
         if (!creep.memory.collecting) {
-            if ((creep.memory.destId == null && creep.memory.destLoc == null) || creep.memory.destId == creep.room.memory.masterLink) {
+            if ((creep.memory.destId == null || creep.memory.destLoc == null) || creep.memory.destId == creep.room.memory.masterLink) {
                 // do we have a destination, if not lets find one
                 const target = this.find_closest_structure(creep);
                 if (target == null) {
@@ -111,17 +111,22 @@ var roleHauler = {
                     const link = Game.getObjectById(creep.room.memory.masterLink);
                     const pos = link.pos;
                     pos.x += 1
-                    if (creep.memory.destId != link.id) {
+                    const creepDstPos = creep.memory.destLoc;
+                    if (creepDstPos == null || !pos.isEqualTo(creepDstPos.x, creepDstPos.y)) {
+                        //console.log('hauler test2')
                         utils.cleanup_move_to(creep);
-                        creep.memory.destId = link.id;
-                        creep.memory.destLoc = link.pos;
+                        creep.memory.destLoc = pos;
                     }
                     if (!creep.pos.isEqualTo(pos)) {
                         // only move when we are not in the spot
-                        utils.move_to(creep);
+                        //console.log('hauler test 3')
+                        //todo figure out why moveBypath is having issues with one spot, prob more optomizations need to be made
+                        // fuck it this doesnt work sometime
+                        creep.moveTo(pos.x, pos.y)
                     }
                     return;
                 }
+                utils.cleanup_move_to(creep);
                 creep.memory.destId = target.id;
                 creep.memory.destLoc = target.pos;
             }

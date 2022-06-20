@@ -79,8 +79,8 @@ var roleSmartHarvester = {
                     const pv = positions[posK];
                     const roomPos = creep.room.getPositionAt(pv[0], pv[1]);
                     const v = roomPos.getRangeTo(target);
-                    if (v <= 1) {
-                        console.log('smart harvester eeeeeek1 ' + creep.name + ' ' + creep.pos)
+                    if (v <= 1) { // if it is a range of one then its the closest
+                        //console.log('smart harvester eeeeeek1 ' + creep.name + ' ' + creep.pos)
                         creep.memory.destLoc = roomPos;
                         break;
                     }

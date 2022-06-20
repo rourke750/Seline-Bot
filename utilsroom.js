@@ -28,7 +28,7 @@ var utilsroom = {
         let name = 'upgradeRooms-' + room.name + '-watcher'
         if (!os.existsThread(name)) {
             const f = function() {
-                for (var role in common.creepMapping) {
+                for (const role in common.creepMapping) {
                     if (room.energyCapacityAvailable == 0) {
                         continue;
                     }
@@ -88,7 +88,6 @@ var utilsroom = {
                     
                     if (room.memory.sources[source.id].smartCreep != null &&
                         Game.creeps[room.memory.sources[source.id].smartCreep] == null) {
-                            console.log('test')
                         room.memory.sources[source.id].smartCreep = null
                     }
 

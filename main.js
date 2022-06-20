@@ -84,7 +84,10 @@ function handle_build_order(spawnsMapping, roomName) { //todo remove not used pa
         const spawn = spawns[sK];
         const roomHarvesters = utilscreep.get_role_home_filtered_creeps(roomName, 'harvester');
         if (roomHarvesters.length < 4) {
-            roleHarvester.create_creep(spawn);
+            const newCreep = roleHarvester.create_creep(spawn);
+            if (newCreep != null) { // if new creep created add to list
+                utilscreep.add_creep(newCreep);
+            }
             const text = `harvesters ${roomHarvesters.length}`;
             spawn.room.visual.text(
                 text,
