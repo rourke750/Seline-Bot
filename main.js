@@ -114,7 +114,7 @@ function handle_build_order(spawnsMapping, roomName) { //todo remove not used pa
             const scountPerr = utils.notZero((scouts.length / utils.get_scout_count()));
             const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / roleSmartHarvester.get_harvest_count(spawn.room)));
             const haulersPerr = utils.notZero((roomHaulers.length / roleHauler.get_harvest_count(spawn.room)));
-            
+
             const nextCreate = [
                 [upgraderPer, roleUpgrader],
                 [buildersPer, roleBuilder],

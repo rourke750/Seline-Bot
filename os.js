@@ -9,10 +9,11 @@ class Thread {
      * position: set to 0 to run every tick, -1 to have to run every tick
      * 
     */
-    constructor(name, currentPos, resetPos) {
+    constructor(name, currentPos, resetPos, exitOnFailure) {
         this.name = name;
         this.currentPosition = currentPos;
         this.resetPosition = resetPos;
+        this.exitOnFailure = exitOnFailure;
     }
 
     run() {
@@ -33,6 +34,10 @@ class Thread {
         if (this.value() < -10) {
             console.log('I AM BEING IGNORED THREAD ' + this.name)
         }
+    }
+
+    shouldExitOnFailure() {
+        return this.exitOnFailure;
     }
 }
 
@@ -156,7 +161,7 @@ if (Memory.os == null) {
 const heap = new Heap();
 
 var Threads = {
-    newThread: function(name, method, position) {
+    newThread: function(name, method, position, exitOnFailure=false) {
         if (name in methodMapping) {
             throw 'name already added';
         }

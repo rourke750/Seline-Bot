@@ -10,7 +10,11 @@ for (ob in OBSTACLE_OBJECT_TYPES) {
  
 var construction = {
 
-    build_missing_spawn: function(room) {
+    build_missing_spawn: function(roomName) {
+        const room = Game.rooms[roomName];
+        if (!room) {
+            return;
+        }
         if (room.controller.my && room.memory.spawnMaster == null && room.name in Memory.flags.capture) {
             // let's try place a master spawn
             // lets see if there is a flag we were just captured
@@ -327,7 +331,7 @@ var construction = {
         const sources = room.find(FIND_SOURCES);
         for (const sourceKey in sources) {
             const sourceV = sources[sourceKey];
-            const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, sourceV.pos.x, sourceV.pos.y))
+            const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, sourceV.pos.x, sourceV.pos.y, {swampCost:2}))
             for (var i = 0; i < paths.length; i++) {
                 const path = paths[i];
                 const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
@@ -344,7 +348,7 @@ var construction = {
         }
         const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
         
-        const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, room.controller.pos.x, room.controller.pos.y))
+        const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, room.controller.pos.x, room.controller.pos.y, {swampCost:2}))
         for (var i = 0; i < paths.length; i++) {
             const path = paths[i];
             const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
@@ -458,7 +462,7 @@ var construction = {
             const start = roomV.start;
             if (start != null) {
                 // build road from master spawn to start
-                const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, start.x, start.y))
+                const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, start.x, start.y, {swampCost:2}))
                 for (var i = 0; i < paths.length; i++) {
                     const path = paths[i];
                     const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
@@ -470,18 +474,150 @@ var construction = {
         }
     },
 
+    buildWallsAndRamparts: function(roomName) {
+        if (roomName != "W3N7") {
+            return;
+        }
+        // todo scan each side and build the wall
+        const room = Game.rooms[roomName]; 
+        if (!room || !room.controller.my) {
+            return;
+        }
+        const t = room.getTerrain();
+        const exits = Game.map.describeExits(roomName);
+
+        const eMap = {
+            "1" : [0, 0, 2],
+            "3" : [49, 0, 4],
+            "5" : [0, 49, 2],
+            "7" : [0, 0, 4],
+        };
+
+        for (const eK in exits) {
+            let tmpPositions = utils.buildLineDirection(eMap[eK][0], eMap[eK][1], eMap[eK][2], 48);
+            let tArray = null;
+            const positionsArray = [];
+            for (let k = tmpPositions.length - 1; k >= 0; k--) {
+                const posi = tmpPositions[k];
+                //const p = room.getPositionAt(posi[0], posi[1]);
+                if (t.get(posi[0], posi[1]) == TERRAIN_MASK_WALL) {
+                    if (tArray != null) {
+                        positionsArray.push(tArray);
+                        tArray = null;
+                    }
+                } else {
+                    if (tArray == null) {
+                        tArray = [];
+                    }
+                    if (eK == "1") {
+                        posi[1] += 2;
+                    } else if (eK == "3") {
+                        posi[0] -= 2;
+                    } else if (eK == "5") {
+                        posi[1] -= 2;
+                    } else {
+                        v[0] += 2;
+                    }
+                    tArray.push(posi);
+                }
+            }
+            if (tArray != null) {
+                positionsArray.push(tArray);
+                tArray = null;
+            }
+            
+            let xMod = 0;
+            let yMod = 0;
+            for (const positionKey in positionsArray) {
+                const positions = positionsArray[positionKey];
+                const lastPostion = positions[0];
+                const firstPostion = positions[positions.length - 1];
+                if (eK == "1") { // top
+                    for (let y = 0; y <= 2; y++) {
+                        positions.push([lastPostion[0]+2, lastPostion[1]-y])
+                        positions.unshift([firstPostion[0]-2, firstPostion[1]-y])
+                    }
+                    positions.push([lastPostion[0]+1, lastPostion[1]])
+                    positions.unshift([firstPostion[0]-1, firstPostion[1]])
+                    yMod = 2;
+                } else if (eK == "3") { // right
+                    for (let y = 0; y <= 2; y++) {
+                        positions.push([firstPostion[0]+y, firstPostion[1]-2])
+                        positions.unshift([lastPostion[0]+y, lastPostion[1]+2])
+                    }
+                    positions.push([lastPostion[0], lastPostion[1]] + 1)
+                    positions.unshift([firstPostion[0], firstPostion[1]] - 1)
+                    xMod = -2;
+                } else if (eK == "5") { // bottom
+                    for (let y = 0; y <= 2; y++) {
+                        positions.push([lastPostion[0]+1, lastPostion[1]+y])
+                        positions.unshift([firstPostion[0]-1, firstPostion[1]+y])
+                    }
+                    positions.push([lastPostion[0]+1, lastPostion[1]])
+                    positions.unshift([firstPostion[0]-1, firstPostion[1]])
+                    yMod = -2;
+                } else { //left
+                    for (let y = 0; y <= 2; y++) {
+                        positions.push([firstPostion[0]-y, firstPostion[1]-1])
+                        positions.unshift([lastPostion[0]-y, lastPostion[1]+1])
+                    }
+                    xMod = 2;
+                }
+            }
+            //Memory.highway[roomName][exits[eK]] = undefined;
+            if (Memory.highway[roomName][exits[eK]] == null) {
+                pathFinder.find_highway(room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), exits[eK]);
+            }
+            // rampart position
+            const start = Memory.highway[roomName][exits[eK]].start;
+            const startX = start.x + xMod;
+            const startY = start.y + yMod;
+            for (const positionKey in positionsArray) {
+                const positions = positionsArray[positionKey];
+                for (const pK in positions) {
+                    const pv = positions[pK];
+                    const pos = room.getPositionAt(pv[0], pv[1]);
+                    if (pv[0] == startX && pv[1] == startY) {
+                        // build rampart
+                        pos.createConstructionSite(STRUCTURE_RAMPART);
+                    } else {
+                        const e = pos.createConstructionSite(STRUCTURE_WALL);
+                        if (e != 0) {
+                            //console.log(e)
+                        }
+                    }
+                }
+            }
+
+            // todo add edges and go to wallhg
+            //new RoomVisual(room.name).poly(positions, {stroke: '#000000', strokeWidth: .8, 
+            //    opacity: .9});
+                break;
+        }
+        
+        //console.log(exits["1"])
+        //let pos = pathFinder.find_highway(room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), ); //todo find room west of current
+
+        
+    },
+
     generateThreads: function(room) {
+        const roomName = room.name;
         let name = 'construction-' + room.name + '-build_missing_spawn';
         if (!os.existsThread(name)) {
             const f = function() {
-                construction.build_missing_spawn(room);
+                construction.build_missing_spawn(room.name);
             } 
-            os.newThread(name, f, 5);
+            os.newThread(name, f, 5, true);
         }
 
         name = 'construction-' + room.name + '-build_aux';
         if (!os.existsThread(name)) {
             const f = function() {
+                const room = Game.rooms[roomName];
+                if (!room) {
+                    return;
+                }
                 construction.buildSpawnCenter(room); // hanldes building the spawns
                 construction.build_extensions(room); // hanldes building the extensions
                 // handles building the roads to extensions, towers, link near spawn, other center piece stuff
@@ -498,7 +634,16 @@ var construction = {
             const f = function() {
                 construction.remove_old_roads(room);
             } 
-            os.newTimedThread(name, f, 10, 1, 30); // spawn a new timed thread that runs every 20 ticks
+            os.newTimedThread(name, f, 10, 1, 30); // spawn a new timed thread that runs every 30 ticks
+        }
+
+        name = 'construction-' + room.name + '-build_walls_and_ramparts'
+        if (!os.existsThread(name)) {
+            const f = function() {
+                construction.buildWallsAndRamparts(roomName);
+            } 
+            //os.newTimedThread(name, f, 10, 1, 30); 
+            os.newThread(name, f, 10);
         }
     }
 }

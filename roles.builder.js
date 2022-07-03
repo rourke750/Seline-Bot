@@ -27,6 +27,8 @@ var roleBuilder = {
         const v = (totalProgress-progress) / 100;
         if (v == 0) {
             return 0;
+        } else if (v > 0 && v < 1) {
+            return 1;
         }
         const val = Math.ceil(Math.log10(v));
         return val;
@@ -65,7 +67,7 @@ var roleBuilder = {
                 }
             }
             
-            if (creep.memory.destId != null) {
+            if (creep.memory.destId != null && !creep.memory.recycle) {
                 const source = Game.getObjectById(creep.memory.destId);
                 if (source == null) {
                     //creep.memory.destId = null;
@@ -81,6 +83,7 @@ var roleBuilder = {
             } else {
                 // not buildings attempt to recycle, as soon as a construction yard pops up this will no longer be called
                 utils.recycle_creep(creep);
+                creep.memory.recycle = true;
             }
 	    }
 	},

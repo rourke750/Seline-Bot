@@ -64,15 +64,10 @@ var roleSmartHarvester = {
         if (creep.store.getUsedCapacity() > 0) {
             // transfer to container
             const tErr = creep.transfer(target, RESOURCE_ENERGY);
-            if (tErr == ERR_NOT_IN_RANGE) {
-                creep.moveTo(target, utils.movement_options);
-            } else if (tErr != ERR_FULL && tErr != 0) {
-                console.log('smart harvester problem with transfer ' + tErr);
-            }
 
             // potentially the location initially picked for the smart creep is too far away to effeciently transfer energy
             // let's try fix that if its the case
-            if (creep.memory.claimed_source != null && creep.pos.getRangeTo(Game.getObjectById(creep.memory.claimed_source)) > 1) {
+            if (creep.memory.claimed_source != null && creep.pos.getRangeTo(Game.getObjectById(creep.memory.claimed_target)) > 1) {
                 // if we aren't in range lets load all the spots and get the closest to the link
                 const positions = creep.room.memory.sources[creep.memory.claimed_source].maxCreeps.positions;
                 for (const posK in positions) {
@@ -80,13 +75,21 @@ var roleSmartHarvester = {
                     const roomPos = creep.room.getPositionAt(pv[0], pv[1]);
                     const v = roomPos.getRangeTo(target);
                     if (v <= 1) { // if it is a range of one then its the closest
-                        //console.log('smart harvester eeeeeek1 ' + creep.name + ' ' + creep.pos)
+                        //console.log('smart harvester eeeeeek1 ' + creep.name + ' ' + creep.pos + ' ' + roomPos)
                         creep.memory.destLoc = roomPos;
                         break;
                     }
                 }
             } else if (creep.memory.claimed_source != null && creep.pos.getRangeTo(Game.getObjectById(creep.memory.claimed_source)) <= 1) {
                 creep.memory.destLoc = creep.pos;
+            }
+
+            if (tErr == ERR_NOT_IN_RANGE) {
+                //creep.moveTo(target, utils.movement_options);
+                //creep.memory.destId = '9d330774017e6b9'
+                utils.move_to(creep);
+            } else if (tErr != ERR_FULL && tErr != 0) {
+                console.log('smart harvester problem with transfer ' + tErr);
             }
         }
         

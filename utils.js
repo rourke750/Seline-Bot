@@ -47,6 +47,19 @@ var utils = {
         // if it is not close enough move it closer.
         // todo check the movebypath for ERR_NOT_FOUND || -5 as it might have gotten a new construction job causing it to move
         // and then ran out of work again, if we get an error not found create a new path
+        if (creep.memory.destId == null) { 
+            const spawn = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
+                filter: (structure) => {
+                    return structure.room.name == creep.room.name && structure.structureType == STRUCTURE_SPAWN;
+                }
+            });
+            creep.memory.destId = spawn.id;
+            creep.memory.destLoc = null;
+        }
+        const spawn = Game.getObjectById(creep.memory.destId);
+        if (spawn.recycleCreep(creep) == ERR_NOT_IN_RANGE) {
+            utils.move_to(creep)
+        }
     },
     
     notZero: function(n) {
@@ -254,11 +267,9 @@ var utils = {
         }
         
         const source = Game.getObjectById(creep.memory.destId);
-
-        if (creep.pos.x != creep.memory.destLoc.x || creep.pos.y != creep.memory.destLoc.y) {
-            // we harvested but we are not in the right spot lets keep moving
-            this.move_to(creep);
-            return true;
+        if (source == null) {
+            console.log('utils source was null how?');
+            return;
         }
 
         let hErr = null;
@@ -266,6 +277,10 @@ var utils = {
             hErr = creep.withdraw(source, RESOURCE_ENERGY);
         } else {
             hErr = creep.harvest(source);
+            if (hErr == OK && (creep.pos.x != creep.memory.destLoc.x || creep.pos.y != creep.memory.destLoc.y)) {
+                // we harvested but we are not in the right spot lets keep moving
+                this.move_to(creep);
+            }
         }
         
         if (hErr == ERR_NOT_ENOUGH_RESOURCES && findNewOnEmpty) {
@@ -288,7 +303,7 @@ var utils = {
         } else if (hErr == ERR_NO_BODYPART) {
             //console.log('harvest source error no body parts??? ' + JSON.stringify(creep.body));
         } else if (hErr != 0) {
-            console.log('harvest source error ' + hErr + ' ' +creep.id)
+            console.log('harvest source error ' + hErr + ' ' +creep.name)
         }
         
         return true;

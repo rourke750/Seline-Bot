@@ -14,6 +14,8 @@ var roleRepairer = {
         var totalRepairPoints = 0
         const structs = room.find(FIND_STRUCTURES, {
                     filter: (structure) => {
+                        if (structure.structureType == STRUCTURE_WALL || structure.structureType == STRUCTURE_RAMPART)
+                            return structure.hits < 3000;
                         return structure.hits < structure.hitsMax && structure.room.name == room.name;
                     }
                 });
@@ -33,6 +35,9 @@ var roleRepairer = {
     find_repairs: function(creep) {
         return creep.pos.findClosestByRange(FIND_STRUCTURES, {
             filter: (structure) => {
+                if (structure.structureType == STRUCTURE_WALL || structure.structureType == STRUCTURE_RAMPART){
+                    return structure.hits < 3000;
+                }
                 return structure.hits < structure.hitsMax && structure.room.name == creep.room.name;
             }
         })

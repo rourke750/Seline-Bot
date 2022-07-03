@@ -15,6 +15,10 @@ var roleHauler = {
         }
         return 0;
     },
+
+    find_storage: function(creep) {
+
+    },
     
     find_closest_structure: function(creep) {
         let objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
@@ -56,6 +60,16 @@ var roleHauler = {
         if (creep.memory.collecting) {
             // we want to get the master link and draw energy from that
             // check if its not null
+
+            /**
+             * TODODODODODODODODODDODODODO
+             * chance below code to pull from a method that will do following
+             * 1. check link for energy, if it has take,
+             * 2. if no energy then look if extensions need energy, if they do not then return null
+             * 3. if they do need energy then take from storage
+             * 
+             * additionally and dropped resources or tombstones go and pick it up if in spawn area add this to harvester code for in room too
+             */
             if (creep.room.memory.masterLink != null) {
                 const link = Game.getObjectById(creep.room.memory.masterLink);
                 // try draw energy from the link

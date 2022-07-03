@@ -24,17 +24,23 @@ var utilsroom = {
         }
     },
 
-    upgradeRooms: function(room) {
-        let name = 'upgradeRooms-' + room.name + '-watcher'
+    upgradeRooms: function(r) {
+        const roomName = r.name;
+        let name = 'upgradeRooms-' + roomName + '-watcher'
         if (!os.existsThread(name)) {
             const f = function() {
                 for (const role in common.creepMapping) {
-                    if (room.energyCapacityAvailable == 0) {
+                    if (Game.rooms[roomName].energyCapacityAvailable == 0) {
                         continue;
                     }
-                    const name = 'roomUpgrader-' + room.name + '-role-' + role;
+                    const name = 'roomUpgrader-' + roomName + '-role-' + role;
                     if (!os.existsThread(name)) {
                         const f = function() {
+                            const room = Game.rooms[roomName];
+                            if (!room) {
+                                console.log('utilsroom upgrade rooms room is empty ' + roomName + ' ' + room);
+                                return; 
+                            }
                             common.creepMapping[role].upgrade(room);
                         }
                         os.newTimedThread(name, f, 10, 0, 10);
@@ -47,11 +53,16 @@ var utilsroom = {
 
     handleSources: function(room) {
         const sources = room.find(FIND_SOURCES);
+        const roomName = room.name;
         for (var id in sources) {
             const name = 'handleSources-' + room.name + '-' + id;
             const source = sources[id];
             if (!os.existsThread(name)) {
                 const f = function() {
+                    room = Game.rooms[roomName];
+                    if (!room) {
+                        return;
+                    }``
                     construction.build_link_near_sources(source);
 
                     // set sources energy request to 0
@@ -110,7 +121,7 @@ var utilsroom = {
                     }
                     room.memory.sources[source.id].totalEnergyWant = totalRequest;
                 }
-                os.newThread(name, f, 1);
+                os.newThread(name, f, 1, true);
             }
         }
     }

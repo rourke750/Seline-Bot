@@ -1,8 +1,28 @@
 const os = require('os');
 
+const swampCostConst = 10;
+const plainCost = 2;
+
 const obsticalD = {};
 for (ob in OBSTACLE_OBJECT_TYPES) {
     obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
+}
+
+class DualCostMatrix {
+    constructor(a, b) {
+        this.a = a;
+        this.b = b;
+    }
+
+    get(x, y) {
+        let aV = this.a.get(x, y);
+        if (aV == 0) 
+            return aB;
+        else if (bV == 0) 
+            return aV;
+        let bV = this.b.get(x, y);
+        return aV <= bV ? aV : bV;
+    }
 }
 
 const pathGenerator = {
@@ -13,6 +33,8 @@ const pathGenerator = {
         }
         opts.maxOps = opts.maxOps || 2000;
         opts.avoidCreep = opts.avoidCreep || false;
+        opts.swampCost = opts.swampCost || swampCostConst;
+        opts.sCostMatrix = opts.sCostMatrix || null;
 
         if (creep.pos.x == dstX && creep.pos.y == dstY) {
             return Room.serializePath([]);
@@ -33,12 +55,15 @@ const pathGenerator = {
         
         const v = PathFinder.search(creep.pos, {'pos': new RoomPosition(dstX, dstY, creep.pos.roomName), 'range': range},
             {
-                plainCost: 2,
-                swampCost: 10,
+                plainCost: plainCost,
+                swampCost: opts.swampCost,
                 roomCallback: function(roomName) {
                     let c = null
                     if (roomName in Memory.costMatrix)
                         c = PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
+                    else if (pathGenerator.build_cost_matrix(roomName)) {
+                        c = PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
+                    }
                     
                     if (opts.avoidCreep && c != null) {
                         const r = Game.rooms[roomName];
@@ -48,6 +73,10 @@ const pathGenerator = {
                         r.find(FIND_CREEPS).forEach(function(oC) {
                               c.set(oC.pos.x, oC.pos.y, 0xff);
                             });
+                    }
+
+                    if (c != null && opts.sCostMatrix != null) {
+                        c = new DualCostMatrix(c, opts.sCostMatrix);
                     }
 
                     return c;
@@ -60,11 +89,8 @@ const pathGenerator = {
         }
         if (v.path.length == 0) {
             console.log('Zero path ' + creep.name + ' ' + creep.pos + ' to ' + dstX + ' ' + dstY + ' cost ' +v.cost + ' range ' + range)
-            //var err = new Error();
-            //console.log(err.stack)
             return Room.serializePath([]);
         }
-        //console.log('aaaaaaaa ' + v.path)
         const convertedPath = this.convertPathFinderSearch(creep.pos, v.path)
         if (!(creep.room.name in convertedPath)) {
             return Room.serializePath([]);
@@ -100,11 +126,14 @@ const pathGenerator = {
         // lets take the creep position and then from that
         const v = PathFinder.search(pos, new RoomPosition(23, 23, dstRoom),
             {
-                plainCost: 2,
-                swampCost: 10,
+                plainCost: plainCost,
+                swampCost: swampCostConst,
                 roomCallback: function(roomName) {
                     if (roomName in Memory.costMatrix)
                         return PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
+                    else if (pathGenerator.build_cost_matrix(roomName)) {
+                        return PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
+                    }
                     return null;
                 }
             }
