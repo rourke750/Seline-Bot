@@ -236,8 +236,6 @@ const pathGenerator = {
     build_cost_matrix: function(roomName, override=false) {
         // We want to build a cost matrix per room and then save to memory
         
-        // todo in the future we will want to be able to invalidate a room
-        
         if (Memory.costMatrix == null) {
             Memory.costMatrix = {};
         }
@@ -265,6 +263,8 @@ const pathGenerator = {
         room.find(FIND_CONSTRUCTION_SITES).forEach(function(struct) {
             if (struct.structureType in obsticalD) {
                 costs.set(struct.pos.x, struct.pos.y, 0xff);
+            } else if (struct.structureType == STRUCTURE_ROAD) {
+                costs.set(struct.pos.x, struct.pos.y, 1);
             }
         });
 

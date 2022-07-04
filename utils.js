@@ -18,6 +18,18 @@ var utils = {
         return count;
     },
 
+    deleteRoads: function(roomName) {
+        const room = Game.rooms[roomName];
+        const roads = room.find(FIND_STRUCTURES, {
+            filter: (structure) => {
+                return structure.room.name == creep.room.name && structure.structureType == STRUCTURE_ROAD;
+            }
+        });
+        for (const k in roads) {
+            roads[k].destroy();
+        }
+    },
+
     buildLineDirection(x, y, dir, length) {
         positions = []
         for (let xx = 1; xx <= length; xx++) {

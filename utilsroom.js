@@ -30,7 +30,7 @@ var utilsroom = {
         if (!os.existsThread(name)) {
             const f = function() {
                 for (const role in common.creepMapping) {
-                    if (Game.rooms[roomName].energyCapacityAvailable == 0) {
+                    if (!(roomName in Game.rooms) || Game.rooms[roomName].energyCapacityAvailable == 0) {
                         continue;
                     }
                     const name = 'roomUpgrader-' + roomName + '-role-' + role;
