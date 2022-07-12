@@ -8,6 +8,7 @@ for (ob in OBSTACLE_OBJECT_TYPES) {
     obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
 }
 
+/*
 class DualCostMatrix {
     constructor(a, b) {
         this.a = a;
@@ -15,15 +16,17 @@ class DualCostMatrix {
     }
 
     get(x, y) {
+        console.log('herm pathfinder')
         let aV = this.a.get(x, y);
+        let bV = this.b.get(x, y);
         if (aV == 0) 
             return aB;
         else if (bV == 0) 
             return aV;
-        let bV = this.b.get(x, y);
-        return aV <= bV ? aV : bV;
+        return aV > bV ? aV : bV;
     }
 }
+*/
 
 const pathGenerator = {
 
@@ -34,7 +37,7 @@ const pathGenerator = {
         opts.maxOps = opts.maxOps || 2000;
         opts.avoidCreep = opts.avoidCreep || false;
         opts.swampCost = opts.swampCost || swampCostConst;
-        opts.sCostMatrix = opts.sCostMatrix || null;
+        //opts.sCostMatrix = opts.sCostMatrix || null;
 
         if (creep.pos.x == dstX && creep.pos.y == dstY) {
             return Room.serializePath([]);
@@ -75,9 +78,9 @@ const pathGenerator = {
                             });
                     }
 
-                    if (c != null && opts.sCostMatrix != null) {
-                        c = new DualCostMatrix(c, opts.sCostMatrix);
-                    }
+                    //if (c != null && opts.sCostMatrix != null) {
+                    //    c = new DualCostMatrix(c, opts.sCostMatrix);
+                    //}
 
                     return c;
                 },
@@ -267,11 +270,19 @@ const pathGenerator = {
                 costs.set(struct.pos.x, struct.pos.y, 1);
             }
         });
+        
+        // after resetting cost matrix go through memory and set path if road
+        if (Memory.construction && Memory.construction.paths) {
+            for (const kPath in Memory.construction.paths) {
+                for (const k in Memory.construction.paths[kPath]) {
+                    const p = Memory.construction.paths[kPath][k];
+                    if (p[2] == STRUCTURE_ROAD) {
+                        costs.set(p[0], p[1], 1);
+                    }
+                }
+            }
+        }
 
-        // Avoid creeps in the room
-        //room.find(FIND_CREEPS).forEach(function(creep) {
-        //  costs.set(creep.pos.x, creep.pos.y, 0xff);
-        //});
         Memory.costMatrix[roomName] = costs.serialize();
         return true;
     },

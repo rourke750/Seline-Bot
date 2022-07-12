@@ -22,12 +22,13 @@ var utils = {
         const room = Game.rooms[roomName];
         const roads = room.find(FIND_STRUCTURES, {
             filter: (structure) => {
-                return structure.room.name == creep.room.name && structure.structureType == STRUCTURE_ROAD;
+                return structure.room.name == room.name && structure.structureType == STRUCTURE_ROAD;
             }
         });
         for (const k in roads) {
             roads[k].destroy();
         }
+        pathFinder.build_cost_matrix(roomName, true);
     },
 
     buildLineDirection(x, y, dir, length) {

@@ -19,7 +19,8 @@ const common = {
         'smartHarvester' : roleSmartHarvester,
         'defender' : militaryDefender,
         'hauler' : roleHauler
-    }
+    },
+    maxConstructionsPerRoom: 5
 }
 
 module.exports = common;
