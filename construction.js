@@ -598,26 +598,29 @@ var construction = {
                         positions.push([firstPostion[0]+y, firstPostion[1]-2])
                         positions.unshift([lastPostion[0]+y, lastPostion[1]+2])
                     }
-                    positions.push([lastPostion[0], lastPostion[1]] + 1)
-                    positions.unshift([firstPostion[0], firstPostion[1]] - 1)
+                    positions.push([lastPostion[0], lastPostion[1]+1])
+                    positions.unshift([firstPostion[0], firstPostion[1]-1])
                     xMod = -2;
                 } else if (eK == "5") { // bottom
                     for (let y = 0; y <= 2; y++) {
-                        positions.push([lastPostion[0]+1, lastPostion[1]+y])
-                        positions.unshift([firstPostion[0]-1, firstPostion[1]+y])
+                        positions.push([lastPostion[0]+2, lastPostion[1]+y])
+                        positions.unshift([firstPostion[0]-2, firstPostion[1]+y])
                     }
                     positions.push([lastPostion[0]+1, lastPostion[1]])
                     positions.unshift([firstPostion[0]-1, firstPostion[1]])
                     yMod = -2;
                 } else { //left
                     for (let y = 0; y <= 2; y++) {
-                        positions.push([firstPostion[0]-y, firstPostion[1]-1])
-                        positions.unshift([lastPostion[0]-y, lastPostion[1]+1])
+                        positions.push([firstPostion[0]-y, firstPostion[1]-2])
+                        positions.unshift([lastPostion[0]-y, lastPostion[1]+2])
                     }
+                    positions.push([lastPostion[0], lastPostion[1]+1])
+                    positions.unshift([firstPostion[0], firstPostion[1]-1])
                     xMod = 2;
                 }
             }
-            //Memory.highway[roomName][exits[eK]] = undefined;
+
+            // generate an exit if one doesn't exist in order for the rampart to be placed
             if (Memory.highway[roomName][exits[eK]] == null) {
                 pathFinder.find_highway(room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), exits[eK]);
             }
@@ -655,7 +658,7 @@ var construction = {
             // todo add edges and go to wallhg
             //new RoomVisual(room.name).poly(positions, {stroke: '#000000', strokeWidth: .8, 
             //    opacity: .9});
-            if (tempCount >= 1)
+            if (tempCount >= 2)
                 break;
             tempCount++
         }
@@ -746,18 +749,13 @@ var construction = {
                 if (count >= common.maxConstructionsPerRoom) // break if we have constructed more than listed
                     break;
                 const path = paths[pKey];
-                room.getPositionAt(path[0], path[1]).createConstructionSite(path[2]);
                 paths.pop();
+                room.getPositionAt(path[0], path[1]).createConstructionSite(path[2]);
                 count++;
             }
             if (paths.length == 0) {
                 Memory.construction[roomName].paths[pathKey] = undefined;
             }
-        }
-
-        if (pathsArray.length == 0 && ('costMatrix' in Memory.construction[roomName])) { 
-            // if we have no more constructions to build delete cost matrix
-            Memory.construction[roomName].costMatrix = undefined;
         }
     },
 
