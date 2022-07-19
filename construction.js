@@ -509,9 +509,7 @@ var construction = {
                     if (this.doesConstructionExistAndCantBuild(room, path, roadStructs))
                         continue;
                     const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
-                    const struct = room.lookForAt(LOOK_STRUCTURES, path.x, path.y);
-                    if (ter != 'wall' && struct.length == 0) {
-                        //room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
+                    if (ter != 'wall') {
                         memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
                     }
                 }
@@ -545,7 +543,6 @@ var construction = {
             "7" : [0, 0, 4],
         };
 
-        let tempCount = 0;
         for (const eK in exits) {
             let tmpPositions = utils.buildLineDirection(eMap[eK][0], eMap[eK][1], eMap[eK][2], 48);
             let tArray = null;
@@ -569,7 +566,7 @@ var construction = {
                     } else if (eK == "5") {
                         posi[1] -= 2;
                     } else {
-                        v[0] += 2;
+                        posi[0] += 2;
                     }
                     tArray.push(posi);
                 }
@@ -600,7 +597,7 @@ var construction = {
                     }
                     positions.push([lastPostion[0], lastPostion[1]+1])
                     positions.unshift([firstPostion[0], firstPostion[1]-1])
-                    xMod = -2;
+                    xMod = 47;
                 } else if (eK == "5") { // bottom
                     for (let y = 0; y <= 2; y++) {
                         positions.push([lastPostion[0]+2, lastPostion[1]+y])
@@ -608,7 +605,7 @@ var construction = {
                     }
                     positions.push([lastPostion[0]+1, lastPostion[1]])
                     positions.unshift([firstPostion[0]-1, firstPostion[1]])
-                    yMod = -2;
+                    yMod = 47;
                 } else { //left
                     for (let y = 0; y <= 2; y++) {
                         positions.push([firstPostion[0]-y, firstPostion[1]-2])
@@ -624,10 +621,25 @@ var construction = {
             if (Memory.highway[roomName][exits[eK]] == null) {
                 pathFinder.find_highway(room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), exits[eK]);
             }
-            // rampart position
+            // we will discover where to place rampart based on the location of the path from spawn to exit
             const start = Memory.highway[roomName][exits[eK]].start;
-            const startX = start.x + xMod;
-            const startY = start.y + yMod;
+            const pathToExit = Room.deserializePath(pathFinder.find_path_in_room({
+                pos: {x:room.memory.spawnMasterX, y:room.memory.spawnMasterY, roomName:roomName}, room:room
+            },
+            start.x, start.y
+            ));
+            let startX;
+            let startY;
+
+            // this logic is used to find from the exit to the spawn, we work backwards as the position we want is at the end of the array
+            for (let i = pathToExit.length - 1; i > pathToExit.length/2; i--) {
+                const v = pathToExit[i];
+                if ((xMod == 0 && v.y == yMod) || (yMod == 0 && v.x == xMod)) {
+                    startX = v.x;
+                    startY = v.y;
+                    break;
+                }
+            }
 
             const memoryArray = [];
 
@@ -658,9 +670,6 @@ var construction = {
             // todo add edges and go to wallhg
             //new RoomVisual(room.name).poly(positions, {stroke: '#000000', strokeWidth: .8, 
             //    opacity: .9});
-            if (tempCount >= 2)
-                break;
-            tempCount++
         }
         
         //console.log(exits["1"])
@@ -804,8 +813,8 @@ var construction = {
             const f = function() {
                 construction.buildWallsAndRamparts(roomName);
             } 
-            //os.newTimedThread(name, f, 10, 1, 30); 
-            os.newThread(name, f, 10);
+            os.newTimedThread(name, f, 10, 1, 30); 
+            //os.newThread(name, f, 10);
         }
 
         name = 'construction-' + room.name + '-construct_from_memory'

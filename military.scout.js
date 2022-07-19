@@ -11,6 +11,9 @@ const keyFlags = ['reserve', 'capture']
  
 var militaryScout = {
     get_room_controller: function(creep) {
+        if (creep.room.name != creep.memory.dstRoom) {
+            return null;
+        }
         return creep.room.controller;
     },
 

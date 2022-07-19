@@ -82,8 +82,12 @@ var roleBuilder = {
                 }
             } else {
                 // not buildings attempt to recycle, as soon as a construction yard pops up this will no longer be called
-                utils.recycle_creep(creep);
-                creep.memory.recycle = true;
+                if (this.findConstructSite(creep) != null) {
+                    creep.memory.recycle = false;
+                } else {
+                    utils.recycle_creep(creep);
+                    creep.memory.recycle = true;
+                }
             }
 	    }
 	},

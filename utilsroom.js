@@ -6,21 +6,33 @@ const construction = require('construction');
 
 const pathFinder = require('pathFinder');
 
+const military = require('military');
+
 var utilsroom = {
     constructRooms: function(room) {
-        let name = 'construction-' + room.name + '-watcher'
+        const roomName = room.name
+        let name = 'construction-' + roomName + '-watcher'
         if (!os.existsThread(name)) {
             const f = function() {
                 construction.generateThreads(room);
             }
             os.newTimedThread(name, f, 10, 0, 40); // spawn a new timed thread that runs every 40 ticks
         }
-        name = 'pathFinder-' + room.name + '-watcher'
+
+        name = 'pathFinder-' + roomName + '-watcher'
         if (!os.existsThread(name)) {
             const f = function() {
-                pathFinder.generateThreads(room.name);
+                pathFinder.generateThreads(roomName);
             }
             os.newTimedThread(name, f, 10, 0, 40); // spawn a new timed thread that runs every 40 ticks
+        }
+
+        name = 'military-' + roomName + '-watcher'
+        if (!os.existsThread(name)) {
+            const f = function() {
+                military.generateThreads(roomName);
+            }
+            os.newThread(name, f, 10);
         }
     },
 

@@ -89,6 +89,22 @@ var utils = {
        return cost;
     },
 
+    findStorage: function(creep) {
+        if (creep.room.memory.spawnMaster == null) {
+            return false;
+        }
+        const v = creep.room.find(FIND_MY_STRUCTURES, {
+            filter: { structureType: STRUCTURE_STORAGE }
+        });
+        if (v.length == 1 && v[0].store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+            creep.memory.destLoc = v[0].pos
+            creep.memory.destId = v[0].id;
+            return true;
+        }
+        return false;
+        
+    },
+
     findContainer: function(creep) {
         if (creep.room.memory.spawnMaster == null) {
             return false;
@@ -103,7 +119,8 @@ var utils = {
                 return true;
             }
         }
-        return false;
+        
+        return this.findStorage(creep);
     },
     
     find_source: function(creep) {
@@ -286,7 +303,7 @@ var utils = {
         }
 
         let hErr = null;
-        if (source.structureType == STRUCTURE_CONTAINER) {
+        if (source.structureType == STRUCTURE_CONTAINER || source.structureType == STRUCTURE_STORAGE) {
             hErr = creep.withdraw(source, RESOURCE_ENERGY);
         } else {
             hErr = creep.harvest(source);
@@ -298,7 +315,13 @@ var utils = {
         
         if (hErr == ERR_NOT_ENOUGH_RESOURCES && findNewOnEmpty) {
             this.cleanup_move_to(creep);
-            if (!(this.find_source(creep)) && creep.store.getFreeCapacity() != 0) {
+            // we need to check again if we want to use a specily refill
+            let found = creep.store.getFreeCapacity() != 0;
+            if (!found && (role === 'builder' || role === 'upgrader' || role === 'repairer')) {
+                found = this.findContainer(creep);
+            }
+
+            if (!found && !this.find_source(creep)) {
                 // we couldn't find another source and the capacity isn't zero so lets get to work
                 return false;
             }

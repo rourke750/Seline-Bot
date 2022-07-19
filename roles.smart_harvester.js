@@ -28,7 +28,9 @@ var roleSmartHarvester = {
     },
     
     run: function(creep) {
-        utils.harvest_source(creep, false)
+        utils.harvest_source(creep, false);
+        const droppedTarget = creep.pos.findClosestByRange(FIND_DROPPED_RESOURCES);
+        if (droppedTarget && creep.pickup(droppedTarget) == 0){};
         // handles setting up the claimed source
         if (creep.memory.claimed_source == null) {
             creep.memory.claimed_source = creep.memory.destId;
