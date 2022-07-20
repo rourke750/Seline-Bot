@@ -20,6 +20,9 @@ var roleHauler = {
 
     },
     
+    /**
+     * This method finds the closed spawn/extension, if none are found/full then it will look for a container/storage
+     */
     find_closest_structure: function(creep) {
         let objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                         filter: (structure) => {
@@ -60,16 +63,6 @@ var roleHauler = {
         if (creep.memory.collecting) {
             // we want to get the master link and draw energy from that
             // check if its not null
-
-            /**
-             * TODODODODODODODODODDODODODO
-             * chance below code to pull from a method that will do following
-             * 1. check link for energy, if it has take,
-             * 2. if no energy then look if extensions need energy, if they do not then return null
-             * 3. if they do need energy then take from storage
-             * 
-             * additionally and dropped resources or tombstones go and pick it up if in spawn area add this to harvester code for in room too
-             */
             if (creep.room.memory.masterLink != null) {
                 const link = Game.getObjectById(creep.room.memory.masterLink);
                 // try draw energy from the link
@@ -117,6 +110,7 @@ var roleHauler = {
         if (!creep.memory.collecting) {
             if ((creep.memory.destId == null || creep.memory.destLoc == null) || creep.memory.destId == creep.room.memory.masterLink) {
                 // do we have a destination, if not lets find one
+                // we will go to extensions first, then container and storage but container will normally be deposited first since its closer
                 const target = this.find_closest_structure(creep);
                 if (target == null) {
                     // no target go sit

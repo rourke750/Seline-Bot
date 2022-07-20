@@ -131,13 +131,14 @@ var construction = {
         // build defense towers
 
         // build storage container
-        //const containerLoc = room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+1);
-        //containerLoc.createConstructionSite(STRUCTURE_CONTAINER);
-        if (!this.doesConstructionExistAndCantBuild(room, linkLoc, mergedFoundStructs)) {
+        if (!this.doesConstructionExistAndCantBuild(room, [room.memory.spawnMasterX, room.memory.spawnMasterY+1], mergedFoundStructs)) {
             paths.push([room.memory.spawnMasterX, room.memory.spawnMasterY+1, STRUCTURE_CONTAINER]);
         }
 
         // build main storage
+        if (!this.doesConstructionExistAndCantBuild(room, [room.memory.spawnMasterX+1, room.memory.spawnMasterY+5], mergedFoundStructs)) {
+            paths.push([room.memory.spawnMasterX+1, room.memory.spawnMasterY+5, STRUCTURE_STORAGE]);
+        }
 
         // send off to memory
         construction.buildMemoryConstruction(room.name, 'auxnearspawns', paths);
