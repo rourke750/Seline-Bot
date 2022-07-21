@@ -7,7 +7,7 @@ let methodMapping = {};
 class Thread {
     /**
      * position: set to 0 to run every tick, -1 to have to run every tick
-     * 
+     * currentPos has to be 10 or less
     */
     constructor(name, currentPos, resetPos, exitOnFailure) {
         this.name = name;
@@ -50,12 +50,17 @@ class Thread {
  * and then it will try to run.  If the cpu usage is too high it will continue to decrement until it becomes a higher priority and can be run
  */
 class TimedThread extends Thread {
+
+    // priority has to be 11 or greater
     constructor(name, priority, delay, resetDelay) {
         super(name, priority, priority);
         this.delay = delay;
         this.resetDelay = resetDelay;
         if (this.resetDelay == null) {
             throw 'error resetdelay null ' + name; 
+        }
+        if (priority < 10) {
+            throw 'For ' + name + ' timed threads cannot have a priority less than 10 or it conflicts with other normal threads'
         }
     }
 
@@ -196,14 +201,16 @@ var Threads = {
     run: function() {
         // first run through just tick everyone
         let start = Game.cpu.getUsed();
+        let loops = 0;
         for (let i = 0; i < heap.size(); i++) {
             const v = heap.get(i);
             v.tick();
         }
 
-        const readd = []; 
+        const readd = [];
         // now logic for running through
         for (let i = 0; i < heap.size(); i++) {
+            loops++;
             const v = heap.remove();
             readd.push(v)
             if (!v.shouldRun())
@@ -217,7 +224,7 @@ var Threads = {
 
             //console.log(v.name + ' ' +v.value() + ' ' + i);
             // going to check usage and if its greater than 30 break for now
-            if (Game.cpu.getUsed() - start >= 30) {
+            if (Game.cpu.getUsed() >= Game.cpu.limit - (Game.cpu.limit / 10)) {
                 //console.log('os cpu usage exceeding skipping')
                 break;
             }
@@ -228,6 +235,8 @@ var Threads = {
         }
         
         let end = Game.cpu.getUsed();
+        
+        //console.log('cpu start '  + start + ' end ' + end + ' loops ' + loops)
         //heap.print()
         //console.log(heap.size())
         //console.log(heap.size())

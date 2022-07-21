@@ -4,18 +4,31 @@ const military = {
         if (!room) {
             return;
         }
-        const events = room.getEventLog(EVENT_ATTACK);
+        const events = room.getEventLog();
         const attackEvents = _.filter(events, {event: EVENT_ATTACK})
         if (attackEvents.length == 0) {
             return;
         }
 
         // there was an attack let's see if we need to add them to hostilities list
-        console.log(attackEvents)
+        //console.log(JSON.stringify(attackEvents))
         if (!Memory.allies) {
             Memory.allies = {}
         }
         // todo add them to enemies list
+        for (const k in attackEvents) {
+            const v = attackEvents[k];
+            const caster = Game.getObjectById(v.objectId);
+            const target = Game.getObjectById(v.data.targetId);
+            if (!caster.my && ((target instanceof Creep && target.my) || (target instanceof Structure && room.controller.my))) {
+                // it's attacking me or something
+                const attackerOwner = caster.owner.username;
+                if (!(attackerOwner in Memory.allies)) {
+                    Memory.allies[attackerOwner] = {};
+                }
+                Memory.allies[attackerOwner].enemy = true;
+            }
+        }
     },
 
     sendDefenders: function(roomName) {

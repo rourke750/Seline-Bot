@@ -257,23 +257,101 @@ function loopRooms() {
 }
 
 function loopSpawns() {
-    const mapping = {};
-    for (const k in Game.spawns) {
-        const spawn = Game.spawns[k];
-        if (!(spawn.room.name in mapping)) {
-            mapping[spawn.room.name] = [];
+    let name = 'main-handle-creep-spawning'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = {};
+            for (const k in Game.spawns) {
+                const spawn = Game.spawns[k];
+                if (!(spawn.room.name in mapping)) {
+                    mapping[spawn.room.name] = [];
+                }
+                mapping[spawn.room.name].push(spawn);
+            }
+            for (const name in Game.rooms) {
+                handle_build_order(mapping, name);
+            }
         }
-        mapping[spawn.room.name].push(spawn);
+        os.newThread(name, f, 10);
     }
-    for (const name in Game.rooms) {
-        handle_build_order(mapping, name);
+}
+
+function handleCreeps() {
+    let name = 'main-handle-creep-running'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            for(var i in Memory.creeps) {
+                if(!Game.creeps[i]) {
+                    delete Memory.creeps[i];
+                }
+            }
+            
+            for(var name in Game.creeps) {
+                var creep = Game.creeps[name];
+                var role = creep.memory.role;
+                if (role == null || role == undefined) {
+                    console.log(creep.name + ' ' + role + ' has an undefined role? ' + creep.pos);
+                    continue;
+                }
+                creepMapping[role].run(creep);
+            }
+        }
+        os.newThread(name, f, 1);
     }
 }
 
 function initialize() {
-    handleFlags();
-    utilscreep.clear_filtered_creeps()
+    let name = 'main-handle-flags'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            handleFlags();
+        }
+        os.newTimedThread(name, f, 10, 0, 10);
+    }
+    
+    utilscreep.clear_filtered_creeps();
 }
+
+function exportStats() {
+    // Reset stats object
+    const start = Game.cpu.getUsed();
+    Memory.stats = {
+      gcl: {},
+      rooms: {},
+      cpu: {},
+    };
+  
+    Memory.stats.time = Game.time;
+  
+    // Collect room stats
+    for (let roomName in Game.rooms) {
+      let room = Game.rooms[roomName];
+      let isMyRoom = (room.controller ? room.controller.my : false);
+      if (isMyRoom) {
+        let roomStats = Memory.stats.rooms[roomName] = {};
+        roomStats.storageEnergy           = (room.storage ? room.storage.store.getUsedCapacity(RESOURCE_ENERGY) : 0);
+        roomStats.terminalEnergy          = (room.terminal ? room.terminal.store.getUsedCapacity(RESOURCE_ENERGY) : 0);
+        roomStats.energyAvailable         = room.energyAvailable;
+        roomStats.energyCapacityAvailable = room.energyCapacityAvailable;
+        roomStats.controllerProgress      = room.controller.progress;
+        roomStats.controllerProgressTotal = room.controller.progressTotal;
+        roomStats.controllerLevel         = room.controller.level;
+      }
+    }
+  
+    // Collect GCL stats
+    Memory.stats.gcl.progress      = Game.gcl.progress;
+    Memory.stats.gcl.progressTotal = Game.gcl.progressTotal;
+    Memory.stats.gcl.level         = Game.gcl.level;
+  
+    // Collect CPU stats
+    Memory.stats.cpu.bucket        = Game.cpu.bucket;
+    Memory.stats.cpu.limit         = Game.cpu.limit;
+    Memory.stats.cpu.used          = Game.cpu.getUsed();
+
+    // metrics cpu usage
+    Memory.stats.cpu.metricsUsed   = Game.cpu.getUsed() - start;
+  }
 
 module.exports.loop = function () {
     
@@ -286,21 +364,8 @@ module.exports.loop = function () {
         
         loopSpawns();
         
-        for(var i in Memory.creeps) {
-            if(!Game.creeps[i]) {
-                delete Memory.creeps[i];
-            }
-        }
-        
-        for(var name in Game.creeps) {
-            var creep = Game.creeps[name];
-            var role = creep.memory.role;
-            if (role == null || role == undefined) {
-                console.log(creep.name + ' ' + role + ' has an undefined role? ' + creep.pos);
-                continue;
-            }
-            creepMapping[role].run(creep);
-        }
+        handleCreeps();
         os.run();
+        exportStats();
     })
 }
