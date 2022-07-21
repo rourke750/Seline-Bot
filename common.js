@@ -5,7 +5,7 @@ const roleRepairer = require('roles.repairer');
 const roleSmartHarvester = require('roles.smart_harvester');
 const roleHauler = require('roles.hauler');
 
-const militaryScout = require('military.scout');
+const militaryClaimer = require('military.claimer');
 const militaryDefender = require('military.defender');
 const militaryTower = require('military.tower');
 
@@ -15,7 +15,7 @@ const common = {
         'upgrader' : roleUpgrader,
         'builder' : roleBuilder,
         'repairer' : roleRepairer,
-        'scout' : militaryScout,
+        'claimer' : militaryClaimer,
         'smartHarvester' : roleSmartHarvester,
         'defender' : militaryDefender,
         'hauler' : roleHauler

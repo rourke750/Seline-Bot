@@ -5,7 +5,7 @@ const roleRepairer = require('roles.repairer');
 const roleSmartHarvester = require('roles.smart_harvester');
 const roleHauler = require('roles.hauler');
 
-const militaryScout = require('military.scout');
+const militaryClaimer = require('military.claimer');
 const militaryDefender = require('military.defender');
 const militaryTower = require('military.tower');
 
@@ -23,12 +23,14 @@ const common = require('common');
 
 const os = require('os');
 
+const expansion = require('expansion');
+
 const creepMapping = {
     'harvester' : roleHarvester,
     'upgrader' : roleUpgrader,
     'builder' : roleBuilder,
     'repairer' : roleRepairer,
-    'scout' : militaryScout,
+    'claimer' : militaryClaimer,
     'smartHarvester' : roleSmartHarvester,
     'defender' : militaryDefender,
     'hauler' : roleHauler
@@ -42,13 +44,13 @@ const profilerMapings = {
     'roleRepairer' : roleRepairer,
     'roleSmartHarvester' : roleSmartHarvester,
     'militaryDefender' : militaryDefender,
-    'militaryScout' : militaryScout,
+    'militaryClaimer' : militaryClaimer,
     'roleHauler' : roleHauler,
     'construction' : construction,
     'pathfinder' : pathFinder
 }
 
-profiler.enable();
+//profiler.enable();
 //console.log(JSON.stringify(utils.valueOf()))
 for (const pMap in profilerMapings) {
     for (const k in profilerMapings[pMap]) {
@@ -102,7 +104,7 @@ function handle_build_order(spawnsMapping, roomName) { //todo remove not used pa
             const roomRepairers = utilscreep.get_role_home_filtered_creeps(roomName, 'repairer');
             const roomSmartHarvesters = utilscreep.get_role_home_filtered_creeps(roomName, 'smartHarvester');
             const roomHaulers = utilscreep.get_role_home_filtered_creeps(roomName, 'hauler');
-            const scouts = utilscreep.get_filtered_creeps('scout');
+            const claimers = utilscreep.get_filtered_creeps('claimer');
             if (roomUpgraders.length == 0) {
                 roleUpgrader.create_creep(spawn);
                 return;
@@ -111,7 +113,7 @@ function handle_build_order(spawnsMapping, roomName) { //todo remove not used pa
             const upgraderPer = utils.notZero((roomUpgraders.length / roleUpgrader.get_harvest_count(spawn.room)));
             const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
             const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
-            const scountPerr = utils.notZero((scouts.length / utils.get_scout_count()));
+            const claimersPer = utils.notZero((claimers.length / utils.get_scout_count()));
             const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / roleSmartHarvester.get_harvest_count(spawn.room)));
             const haulersPerr = utils.notZero((roomHaulers.length / roleHauler.get_harvest_count(spawn.room)));
             
@@ -119,7 +121,7 @@ function handle_build_order(spawnsMapping, roomName) { //todo remove not used pa
                 [upgraderPer, roleUpgrader],
                 [buildersPer, roleBuilder],
                 [repairerPer, roleRepairer],
-                [scountPerr, militaryScout],
+                [claimersPer, militaryClaimer],
                 [smartHarvesterPerr, roleSmartHarvester],
                 [haulersPerr, roleHauler]
             ];
@@ -196,13 +198,15 @@ function handleFlags() {
     for (const k in Game.flags) {
         const v = Game.flags[k];
         if (!(v.pos.roomName in Memory.flags.energy) && k.startsWith('Energy')) {
-            Memory.flags.energy[v.pos.roomName] = {};
+            Memory.flags.energy[v.pos.roomName] = true;
         } else if (!(v.pos.roomName in Memory.flags.reserve) && k.startsWith('Reserve')) {
             Memory.flags.reserve[v.pos.roomName] = {};
         } else if (!(v.pos.roomName in Memory.flags.capture) && k.startsWith('Capture')) {
             Memory.flags.capture[v.pos.roomName] = {};
         }
     }
+
+    // handle clearing out reserve creeps
     for (const flagTypeK in m) {
         for (const arrayPos in m[flagTypeK]) {
             const flagRooms = m[flagTypeK][arrayPos];
@@ -213,7 +217,6 @@ function handleFlags() {
             }
         }
     }
-    //todo remove flags that are no longer there
     const roomFlags = {};
     for (const fN in Game.flags) {
         const flag = Game.flags[fN];
@@ -233,12 +236,11 @@ function handleFlags() {
         roomFlags[flag.pos.roomName][n] = true;
     }
 
+    // delete flags that are no longer there
     for (const flagType in m){
         const roomNames = m[flagType];
         for (const roomName in roomNames) {
             if (!(roomName in roomFlags) || !(flagType in roomFlags[roomName])) {
-                // err fucking figure out yourself
-                console.log(JSON.stringify(roomFlags))
                 delete m[flagType][roomName];
             }
         }
@@ -260,14 +262,7 @@ function loopSpawns() {
     let name = 'main-handle-creep-spawning'
     if (!os.existsThread(name)) {
         const f = function() {
-            const mapping = {};
-            for (const k in Game.spawns) {
-                const spawn = Game.spawns[k];
-                if (!(spawn.room.name in mapping)) {
-                    mapping[spawn.room.name] = [];
-                }
-                mapping[spawn.room.name].push(spawn);
-            }
+            const mapping = utilscreep.getRoomToSpawnMapping();
             for (const name in Game.rooms) {
                 handle_build_order(mapping, name);
             }
@@ -308,8 +303,17 @@ function initialize() {
         }
         os.newTimedThread(name, f, 10, 0, 10);
     }
+
+    name = 'main-handle-expansion'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            expansion.generateThreads();
+        }
+        os.newTimedThread(name, f, 10, 0, 300);
+    }
     
     utilscreep.clear_filtered_creeps();
+    utilscreep.generateRoomToSpawnMapping();
 }
 
 function exportStats() {
@@ -351,7 +355,7 @@ function exportStats() {
 
     // metrics cpu usage
     Memory.stats.cpu.metricsUsed   = Game.cpu.getUsed() - start;
-  }
+}
 
 module.exports.loop = function () {
     

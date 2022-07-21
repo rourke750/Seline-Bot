@@ -1,8 +1,5 @@
 const pathFinder = require('pathFinder');
 
-let filtered_mapping = {};
-let filtered_homeroom_mappings = {};
-
 var utils = {
     movement_options: {visualizePathStyle: {stroke: '#ffffff'}, reusePath: 10, ignoreCreeps: true},
     movement_collision: {visualizePathStyle: {stroke: '#ffffff'}, reusePath: 10, ignoreCreeps: false},
