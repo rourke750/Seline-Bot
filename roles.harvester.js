@@ -39,15 +39,18 @@ var roleHarvester = {
                                 structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
                         }
                     });
+        // we didn't find any spawns or extensions we could dump energy into
         if (!objs) {
-            // Let's see if there is a storage we can use
+            // Let's see if there is a storage or container we can use
             objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                 filter: (structure) => {
-                    return structure.structureType == STRUCTURE_STORAGE && structure.store.getUsedCapacity(RESOURCE_ENERGY) < 500000 
+                    return ((structure.structureType == STRUCTURE_CONTAINER && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0) || 
+                        (structure.structureType == STRUCTURE_STORAGE && structure.store.getUsedCapacity(RESOURCE_ENERGY) < 500000)) 
                     && structure.room.name == creep.room.name;
                 }
             });
         }
+        // we didnt find and containers or storages, lets just go sit somewhere random
         if (!objs) {
             const targets = creep.room.find(FIND_STRUCTURES, {
                 filter: (structure) => {

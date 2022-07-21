@@ -3,6 +3,8 @@ var utils = require('utils');
 const normal_creep = [WORK, CARRY, MOVE];
 const big_creep = [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE];
 
+const rampartAndWallMaxHealth = 3000;
+
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)],
     [1, big_creep, utils.get_creep_cost(big_creep)]
@@ -14,13 +16,18 @@ var roleRepairer = {
         var totalRepairPoints = 0
         const structs = room.find(FIND_STRUCTURES, {
                     filter: (structure) => {
+                        if (structure.structureType == STRUCTURE_WALL || structure.structureType == STRUCTURE_RAMPART)
+                            return structure.hits < rampartAndWallMaxHealth;
                         return structure.hits < structure.hitsMax && structure.room.name == room.name;
                     }
                 });
         for (var struct in structs) {
             const s = structs[struct]
             //console.log(s.hitsMax + ' ' + s.hits + ' ' + s.structureType + ' ' + s.pos.x + ' ' + s.pos.y)
-            totalRepairPoints += s.hitsMax - s.hits;
+            if (s.structureType == STRUCTURE_WALL || s.structureType == STRUCTURE_RAMPART)
+                totalRepairPoints += rampartAndWallMaxHealth;
+            else
+                totalRepairPoints += s.hitsMax - s.hits;
         }
         if (totalRepairPoints == 0) {
             return 0;
@@ -33,6 +40,9 @@ var roleRepairer = {
     find_repairs: function(creep) {
         return creep.pos.findClosestByRange(FIND_STRUCTURES, {
             filter: (structure) => {
+                if (structure.structureType == STRUCTURE_WALL || structure.structureType == STRUCTURE_RAMPART){
+                    return structure.hits < 3000;
+                }
                 return structure.hits < structure.hitsMax && structure.room.name == creep.room.name;
             }
         })

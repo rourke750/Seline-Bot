@@ -5,7 +5,9 @@ var militaryTower = {
       const towers = room.find(FIND_MY_STRUCTURES, {
          filter: { structureType: STRUCTURE_TOWER }
       });
-      const enemies = room.find(FIND_HOSTILE_CREEPS);
+      const enemies = room.find(FIND_HOSTILE_CREEPS, {filter: function(creep) {
+         return creep.owner.username in Memory.allies && Memory.allies[creep.owner.username].enemy;
+      }});
       if (!enemies || enemies.length == 0) {
          return;
       }

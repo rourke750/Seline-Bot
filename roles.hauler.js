@@ -15,7 +15,14 @@ var roleHauler = {
         }
         return 0;
     },
+
+    find_storage: function(creep) {
+
+    },
     
+    /**
+     * This method finds the closed spawn/extension, if none are found/full then it will look for a container/storage
+     */
     find_closest_structure: function(creep) {
         let objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
                         filter: (structure) => {
@@ -83,14 +90,14 @@ var roleHauler = {
                     const link = Game.getObjectById(creep.room.memory.masterLink);
                     const pos = link.pos;
                     pos.x += 1
-                    if (creep.memory.destId != link.id) {
+                    const creepDstPos = creep.memory.destLoc;
+                    if (creepDstPos == null || !pos.isEqualTo(creepDstPos.x, creepDstPos.y)) {
                         utils.cleanup_move_to(creep);
-                        creep.memory.destId = link.id;
-                        creep.memory.destLoc = link.pos;
+                        creep.memory.destLoc = pos;
                     }
                     if (!creep.pos.isEqualTo(pos)) {
                         // only move when we are not in the spot
-                        utils.move_to(creep);
+                        creep.moveTo(pos.x, pos.y)
                     }
                     return;
                 }
@@ -101,8 +108,9 @@ var roleHauler = {
 
         // if we are not collecting energy then lets start dispensing it
         if (!creep.memory.collecting) {
-            if ((creep.memory.destId == null && creep.memory.destLoc == null) || creep.memory.destId == creep.room.memory.masterLink) {
+            if ((creep.memory.destId == null || creep.memory.destLoc == null) || creep.memory.destId == creep.room.memory.masterLink) {
                 // do we have a destination, if not lets find one
+                // we will go to extensions first, then container and storage but container will normally be deposited first since its closer
                 const target = this.find_closest_structure(creep);
                 if (target == null) {
                     // no target go sit
@@ -111,17 +119,22 @@ var roleHauler = {
                     const link = Game.getObjectById(creep.room.memory.masterLink);
                     const pos = link.pos;
                     pos.x += 1
-                    if (creep.memory.destId != link.id) {
+                    const creepDstPos = creep.memory.destLoc;
+                    if (creepDstPos == null || !pos.isEqualTo(creepDstPos.x, creepDstPos.y)) {
+                        //console.log('hauler test2')
                         utils.cleanup_move_to(creep);
-                        creep.memory.destId = link.id;
-                        creep.memory.destLoc = link.pos;
+                        creep.memory.destLoc = pos;
                     }
                     if (!creep.pos.isEqualTo(pos)) {
                         // only move when we are not in the spot
-                        utils.move_to(creep);
+                        //console.log('hauler test 3')
+                        //todo figure out why moveBypath is having issues with one spot, prob more optomizations need to be made
+                        // fuck it this doesnt work sometime
+                        creep.moveTo(pos.x, pos.y)
                     }
                     return;
                 }
+                utils.cleanup_move_to(creep);
                 creep.memory.destId = target.id;
                 creep.memory.destLoc = target.pos;
             }

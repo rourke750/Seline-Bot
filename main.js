@@ -13,9 +13,15 @@ const construction = require('construction');
 
 const utils = require('utils');
 const utilscreep = require('utilscreep');
+const utilsroom = require('utilsroom');
+
 const pathFinder = require('pathFinder');
 
 const profiler = require('screeps-profiler');
+
+const common = require('common');
+
+const os = require('os');
 
 const creepMapping = {
     'harvester' : roleHarvester,
@@ -54,12 +60,18 @@ for (const pMap in profilerMapings) {
 
 global.utils = utils;
 global.pathFinder = pathFinder;
+global.os = os;
+
+//os.newThread('test1', function(){console.log('test1')},3)
+//os.newThread('test2', function(){console.log('test2')},4)
+//os.newThread('test3', function(){console.log('test3')},7)
+//os.newThread('test4', function(){console.log('test4')},0)
 
 //todo make each creep find the cloest energy first 
 // todo make similar actors do same actions
 //todo check if a creep is idle
 
-function handle_build_order(spawnsMapping, roomName, harvesters, upgraders, builders, repairers, scouts, smartHarvesters, haulers) {
+function handle_build_order(spawnsMapping, roomName) { //todo remove not used params
     // test code for logging
     // todo try get cords for coordinator in another room that i dont have vision using terrain scan
     //const flag = Game.flags['Capture']
@@ -72,7 +84,10 @@ function handle_build_order(spawnsMapping, roomName, harvesters, upgraders, buil
         const spawn = spawns[sK];
         const roomHarvesters = utilscreep.get_role_home_filtered_creeps(roomName, 'harvester');
         if (roomHarvesters.length < 4) {
-            roleHarvester.create_creep(spawn);
+            const newCreep = roleHarvester.create_creep(spawn);
+            if (newCreep != null) { // if new creep created add to list
+                utilscreep.add_creep(newCreep);
+            }
             const text = `harvesters ${roomHarvesters.length}`;
             spawn.room.visual.text(
                 text,
@@ -86,7 +101,8 @@ function handle_build_order(spawnsMapping, roomName, harvesters, upgraders, buil
             const roomBuilders = utilscreep.get_role_home_filtered_creeps(roomName, 'builder');
             const roomRepairers = utilscreep.get_role_home_filtered_creeps(roomName, 'repairer');
             const roomSmartHarvesters = utilscreep.get_role_home_filtered_creeps(roomName, 'smartHarvester');
-            const roomHaulers = utilscreep.get_role_home_filtered_creeps(roomName, 'hauler');;
+            const roomHaulers = utilscreep.get_role_home_filtered_creeps(roomName, 'hauler');
+            const scouts = utilscreep.get_filtered_creeps('scout');
             if (roomUpgraders.length == 0) {
                 roleUpgrader.create_creep(spawn);
                 return;
@@ -136,6 +152,7 @@ function handle_build_order(spawnsMapping, roomName, harvesters, upgraders, buil
     //todo below is code for spawning to rooms from other rooms, 
     // if we have no spawns
     if (spawns == null) {
+        const builders = utilscreep.get_filtered_creeps('builder');
         let closest = 9999999;
         let closestRoomName = null;
         for (const otherRoomName in spawnsMapping) {
@@ -228,125 +245,113 @@ function handleFlags() {
     }
 }
 
-function constructRooms(room) {
-    construction.build_missing_spawn(room);
-    if ((Game.time + 20) % 1000 == 0) {
-        construction.buildSpawnCenter(room); // hanldes building the spawns
-        construction.build_extensions(room); // hanldes building the extensions
-         // handles building the roads to extensions, towers, link near spawn, other center piece stuff
-        construction.buildAuxNearSpawn(room);
-        construction.buildRoadsFromMasterSpawnToExits(room);
-        construction.buildRoadFromMasterSpawnToSources(room);
-        construction.buildRoadsFromMasterSpawnToController(room);
-    } else if ((Game.time + 30) % 1000 == 0) {
-        construction.remove_old_roads(room);
-    } else if ((Game.time + 40) % 100 == 0) {
-        pathFinder.build_cost_matrix(room.name, true);
-    }
-}
-
 function loopRooms() {
     for (var name in Game.rooms) {
         const room = Game.rooms[name];
-        constructRooms(room);
-        for (var role in creepMapping) {
-            if (room.energyCapacityAvailable == 0) {
-                continue;
-            }
-            creepMapping[role].upgrade(room);
-        }
+        utilsroom.constructRooms(room);
+        utilsroom.upgradeRooms(room);
         militaryTower.run(room);
 
-        const sources = room.find(FIND_SOURCES);
-        for (var id in sources) {
-            const source = sources[id];
-            construction.build_link_near_sources(source);
-
-            // set sources energy request to 0
-            if (room.memory.sources == null) {
-                room.memory.sources = {};
-            }
-            if (!(source.id in room.memory.sources)) {
-                room.memory.sources[source.id] = {};
-            }
-            if (room.memory.sources[source.id].creeps == null) {
-                room.memory.sources[source.id].creeps = {};
-            }
-            
-            if (room.controller == undefined || !room.controller.my) {
-                // Let's go ahead and scout this room
-                room.memory.sources[source.id].x = source.pos.x;
-                room.memory.sources[source.id].y = source.pos.y;
-            }
-
-            if (room.memory.sources[source.id].maxCreeps == null) {
-                // let's try find the max creeps we can support
-                const a = room.lookAtArea(source.pos.y-1, source.pos.x-1, source.pos.y+1, source.pos.x+1, true);
-                count = 0
-                positions = [];
-                for (const aK in a) {
-                    const aV = a[aK];
-                    if (aV.type == 'terrain' && (aV.terrain == 'plain' || aV.terrain == 'swamp')) {
-                        count += 1;
-                        positions.push([aV.x, aV.y])
-                    }
-                }
-                room.memory.sources[source.id].maxCreeps = {positions: positions, maxCount: count, occupied: new Array(count).fill(0)};
-            }
-            
-            
-            if (room.memory.sources[source.id].smartCreep != null &&
-                Game.creeps[room.memory.sources[source.id].smartCreep] == null) {
-                room.memory.sources[source.id].smartCreep = null
-            }
-
-            let totalRequest = 0;
-            for (const c in room.memory.sources[source.id].creeps) {
-                const v = room.memory.sources[source.id].creeps[c];
-                if (v.lastTicked == null) {
-                    room.memory.sources[source.id].maxCreeps.occupied[v.maxCreepsIndexPosition] = 0;
-                    delete room.memory.sources[source.id].creeps[c];
-                } else if (Game.time > v.lastTicked + 3) {
-                    room.memory.sources[source.id].maxCreeps.occupied[v.maxCreepsIndexPosition] = 0;
-                    delete room.memory.sources[source.id].creeps[c];
-                } else {
-                    if (Game.creeps[c] != undefined) {
-                        totalRequest += Game.creeps[c].store.getFreeCapacity();
-                        // let's go ahead and set this to 1 incase we had cleared it earlier or something
-                        room.memory.sources[source.id].maxCreeps.occupied[v.maxCreepsIndexPosition] = 1;
-                    }
-                }
-            }
-            room.memory.sources[source.id].totalEnergyWant = totalRequest;
-        }
+        utilsroom.handleSources(room);
     }
 }
 
 function loopSpawns() {
-    const harvesters = utilscreep.get_filtered_creeps('harvester')
-    const upgraders = utilscreep.get_filtered_creeps('upgrader');
-    const builders = utilscreep.get_filtered_creeps('builder');
-    const repairers = utilscreep.get_filtered_creeps('repairer');
-    const scouts = utilscreep.get_filtered_creeps('scout');
-    const smartHarvesters = utilscreep.get_filtered_creeps('smartHarvester');
-    const haulers = utilscreep.get_filtered_creeps('hauler');
-    const mapping = {};
-    for (const k in Game.spawns) {
-        const spawn = Game.spawns[k];
-        if (!(spawn.room.name in mapping)) {
-            mapping[spawn.room.name] = [];
+    let name = 'main-handle-creep-spawning'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = {};
+            for (const k in Game.spawns) {
+                const spawn = Game.spawns[k];
+                if (!(spawn.room.name in mapping)) {
+                    mapping[spawn.room.name] = [];
+                }
+                mapping[spawn.room.name].push(spawn);
+            }
+            for (const name in Game.rooms) {
+                handle_build_order(mapping, name);
+            }
         }
-        mapping[spawn.room.name].push(spawn);
+        os.newThread(name, f, 10);
     }
-    for (const name in Game.rooms) {
-        handle_build_order(mapping, name, harvesters, upgraders, builders, repairers, scouts, smartHarvesters, haulers);
+}
+
+function handleCreeps() {
+    let name = 'main-handle-creep-running'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            for(var i in Memory.creeps) {
+                if(!Game.creeps[i]) {
+                    delete Memory.creeps[i];
+                }
+            }
+            
+            for(var name in Game.creeps) {
+                var creep = Game.creeps[name];
+                var role = creep.memory.role;
+                if (role == null || role == undefined) {
+                    console.log(creep.name + ' ' + role + ' has an undefined role? ' + creep.pos);
+                    continue;
+                }
+                creepMapping[role].run(creep);
+            }
+        }
+        os.newThread(name, f, 1);
     }
 }
 
 function initialize() {
-    handleFlags();
-    utilscreep.clear_filtered_creeps()
+    let name = 'main-handle-flags'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            handleFlags();
+        }
+        os.newTimedThread(name, f, 10, 0, 10);
+    }
+    
+    utilscreep.clear_filtered_creeps();
 }
+
+function exportStats() {
+    // Reset stats object
+    const start = Game.cpu.getUsed();
+    Memory.stats = {
+      gcl: {},
+      rooms: {},
+      cpu: {},
+    };
+  
+    Memory.stats.time = Game.time;
+  
+    // Collect room stats
+    for (let roomName in Game.rooms) {
+      let room = Game.rooms[roomName];
+      let isMyRoom = (room.controller ? room.controller.my : false);
+      if (isMyRoom) {
+        let roomStats = Memory.stats.rooms[roomName] = {};
+        roomStats.storageEnergy           = (room.storage ? room.storage.store.getUsedCapacity(RESOURCE_ENERGY) : 0);
+        roomStats.terminalEnergy          = (room.terminal ? room.terminal.store.getUsedCapacity(RESOURCE_ENERGY) : 0);
+        roomStats.energyAvailable         = room.energyAvailable;
+        roomStats.energyCapacityAvailable = room.energyCapacityAvailable;
+        roomStats.controllerProgress      = room.controller.progress;
+        roomStats.controllerProgressTotal = room.controller.progressTotal;
+        roomStats.controllerLevel         = room.controller.level;
+      }
+    }
+  
+    // Collect GCL stats
+    Memory.stats.gcl.progress      = Game.gcl.progress;
+    Memory.stats.gcl.progressTotal = Game.gcl.progressTotal;
+    Memory.stats.gcl.level         = Game.gcl.level;
+  
+    // Collect CPU stats
+    Memory.stats.cpu.bucket        = Game.cpu.bucket;
+    Memory.stats.cpu.limit         = Game.cpu.limit;
+    Memory.stats.cpu.used          = Game.cpu.getUsed();
+
+    // metrics cpu usage
+    Memory.stats.cpu.metricsUsed   = Game.cpu.getUsed() - start;
+  }
 
 module.exports.loop = function () {
     
@@ -359,20 +364,8 @@ module.exports.loop = function () {
         
         loopSpawns();
         
-        for(var i in Memory.creeps) {
-            if(!Game.creeps[i]) {
-                delete Memory.creeps[i];
-            }
-        }
-        
-        for(var name in Game.creeps) {
-            var creep = Game.creeps[name];
-            var role = creep.memory.role;
-            if (role == null || role == undefined) {
-                console.log(creep.name + ' ' + role + ' has an undefined role? ' + creep.pos);
-                continue;
-            }
-            creepMapping[role].run(creep);
-        }
+        handleCreeps();
+        os.run();
+        exportStats();
     })
 }

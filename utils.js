@@ -18,6 +18,19 @@ var utils = {
         return count;
     },
 
+    deleteRoads: function(roomName) {
+        const room = Game.rooms[roomName];
+        const roads = room.find(FIND_STRUCTURES, {
+            filter: (structure) => {
+                return structure.room.name == room.name && structure.structureType == STRUCTURE_ROAD;
+            }
+        });
+        for (const k in roads) {
+            roads[k].destroy();
+        }
+        pathFinder.build_cost_matrix(roomName, true);
+    },
+
     buildLineDirection(x, y, dir, length) {
         positions = []
         for (let xx = 1; xx <= length; xx++) {
@@ -47,6 +60,19 @@ var utils = {
         // if it is not close enough move it closer.
         // todo check the movebypath for ERR_NOT_FOUND || -5 as it might have gotten a new construction job causing it to move
         // and then ran out of work again, if we get an error not found create a new path
+        if (creep.memory.destId == null) { 
+            const spawn = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
+                filter: (structure) => {
+                    return structure.room.name == creep.room.name && structure.structureType == STRUCTURE_SPAWN;
+                }
+            });
+            creep.memory.destId = spawn.id;
+            creep.memory.destLoc = null;
+        }
+        const spawn = Game.getObjectById(creep.memory.destId);
+        if (spawn.recycleCreep(creep) == ERR_NOT_IN_RANGE) {
+            utils.move_to(creep)
+        }
     },
     
     notZero: function(n) {
@@ -63,6 +89,22 @@ var utils = {
        return cost;
     },
 
+    findStorage: function(creep) {
+        if (creep.room.memory.spawnMaster == null) {
+            return false;
+        }
+        const v = creep.room.find(FIND_MY_STRUCTURES, {
+            filter: { structureType: STRUCTURE_STORAGE }
+        });
+        if (v.length == 1 && v[0].store.getUsedCapacity(RESOURCE_ENERGY) > 0) {
+            creep.memory.destLoc = v[0].pos
+            creep.memory.destId = v[0].id;
+            return true;
+        }
+        return false;
+        
+    },
+
     findContainer: function(creep) {
         if (creep.room.memory.spawnMaster == null) {
             return false;
@@ -77,7 +119,8 @@ var utils = {
                 return true;
             }
         }
-        return false;
+        
+        return this.findStorage(creep);
     },
     
     find_source: function(creep) {
@@ -254,23 +297,31 @@ var utils = {
         }
         
         const source = Game.getObjectById(creep.memory.destId);
-
-        if (creep.pos.x != creep.memory.destLoc.x || creep.pos.y != creep.memory.destLoc.y) {
-            // we harvested but we are not in the right spot lets keep moving
-            this.move_to(creep);
-            return true;
+        if (source == null) {
+            console.log('utils source was null how?');
+            return;
         }
 
         let hErr = null;
-        if (source.structureType == STRUCTURE_CONTAINER) {
+        if (source.structureType == STRUCTURE_CONTAINER || source.structureType == STRUCTURE_STORAGE) {
             hErr = creep.withdraw(source, RESOURCE_ENERGY);
         } else {
             hErr = creep.harvest(source);
+            if (hErr == OK && (creep.pos.x != creep.memory.destLoc.x || creep.pos.y != creep.memory.destLoc.y)) {
+                // we harvested but we are not in the right spot lets keep moving
+                this.move_to(creep);
+            }
         }
         
         if (hErr == ERR_NOT_ENOUGH_RESOURCES && findNewOnEmpty) {
             this.cleanup_move_to(creep);
-            if (!(this.find_source(creep)) && creep.store.getFreeCapacity() != 0) {
+            // we need to check again if we want to use a specily refill
+            let found = creep.store.getFreeCapacity() != 0;
+            if (!found && (role === 'builder' || role === 'upgrader' || role === 'repairer')) {
+                found = this.findContainer(creep);
+            }
+
+            if (!found && !this.find_source(creep)) {
                 // we couldn't find another source and the capacity isn't zero so lets get to work
                 return false;
             }
@@ -288,7 +339,7 @@ var utils = {
         } else if (hErr == ERR_NO_BODYPART) {
             //console.log('harvest source error no body parts??? ' + JSON.stringify(creep.body));
         } else if (hErr != 0) {
-            console.log('harvest source error ' + hErr + ' ' +creep.id)
+            console.log('harvest source error ' + hErr + ' ' +creep.name)
         }
         
         return true;
@@ -327,7 +378,7 @@ var utils = {
         delete creep.memory.dstRoomPath; // it is no longer needed get rid of it
     },
     
-    move_to: function(creep, newRoomFunc = null) {
+    move_to: function(creep, newRoomFunc = null, avoidCreepIfStuck=true) {
         // hanldes destinations even in other rooms
         const v = this.move_to_helper(creep);
         if (creep.memory.current_path == null || creep.memory.current_path == undefined) {
@@ -344,7 +395,7 @@ var utils = {
         
         // below code is beginning steps if we are stuck in position, in the future we can try ask the offending creep to move out the way
         if (creep.memory.last_pos != null && creep.pos.isEqualTo(creep.memory.last_pos.x, creep.memory.last_pos.y) 
-            && creep.fatigue == 0) {
+            && creep.fatigue == 0 && avoidCreepIfStuck) {
             // get the path we are currently traveling
             const sePath = creep.memory.current_path[creep.room.name];
             if (sePath != "" && sePath != null) {

@@ -22,6 +22,9 @@ var utilscreep = {
     add_creep: function(creep) {
         const r = creep.memory.role;
         const hKey = [r, creep.memory.home_room];
+        if (!(r in filtered_mapping)) {
+            filtered_mapping[r] = [];
+        }
         filtered_mapping[r].push(creep);
         if (!filtered_role_home_mapping[hKey]) {
             filtered_role_home_mapping[hKey] = [];
