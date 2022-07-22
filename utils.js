@@ -427,7 +427,7 @@ var utils = {
                 const newP = pathFinder.find_path_in_room(creep, v[0], v[1]);
                 creep.memory.current_path[creep.pos.roomName] = newP;
             } else {
-                console.log('eeeeeeeeeeeeeeeeeeek utils')
+                console.log('utils creep could not find path to destination clearing ' + creep.name)
                 utils.cleanup_move_to(creep);
                 return;
             }

@@ -19,7 +19,7 @@ var construction = {
 
     build_missing_spawn: function(roomName) {
         const room = Game.rooms[roomName];
-        if (!room) {
+        if (!room || !room.controller) {
             return;
         }
         if (room.controller.my && room.memory.spawnMaster == null && room.name in Memory.flags.capture) {
@@ -151,7 +151,7 @@ var construction = {
         }
 
         let maxSpawns = 1;
-        if (!room.controller.my) {
+        if (!room.controller || !room.controller.my) {
             return;
         } else if (room.controller.level == 7) {
             maxSpawns = 2;
@@ -348,7 +348,7 @@ var construction = {
     
     build_extensions: function(room) {
 
-        if (!room.controller.my)
+        if (!room.controller || !room.controller.my)
             return;
 
         // todo build that cool design i saw 
@@ -480,7 +480,7 @@ var construction = {
 
     buildRoadsFromMasterSpawnToExits: function(room) {
         // first let's check check highway
-        if (Memory.highway == null || !room.controller.my) {
+        if (Memory.highway == null || !room.controller || !room.controller.my) {
             // no highway just exit
             return;
         }
@@ -531,7 +531,7 @@ var construction = {
 
         // todo scan each side and build the wall
         const room = Game.rooms[roomName]; 
-        if (!room || !room.controller.my) {
+        if (!room || !room.controller || !room.controller.my) {
             return;
         }
         const t = room.getTerrain();
