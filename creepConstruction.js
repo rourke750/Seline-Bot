@@ -9,6 +9,9 @@ const roleHauler = require('roles.hauler');
 const roleScout = require('roles.scout');
 
 const militaryClaimer = require('military.claimer');
+const militaryDefender = require('military.defender');
+
+const military = require('military');
 
 var creepConstruction = {
     handle_build_order: function(spawnsMapping, roomName) { //todo remove not used params
@@ -121,6 +124,52 @@ var creepConstruction = {
                 }
                 continue;
             }
+        }
+    },
+
+    handle_build_no_spawns_defender_helper: function(spawnsMapping, count, roomName) {
+        let closest = 9999999;
+        let closestRoomName = null;
+        for (const otherRoomName in spawnsMapping) {
+            const d = Game.map.getRoomLinearDistance(roomName, otherRoomName);
+            if (d < closest) {
+                closest = d;
+                closestRoomName = otherRoomName;
+            }
+        }
+        for (const sK in spawnsMapping[closestRoomName]) {
+            const defenders = _.filter(utilscreep.get_filtered_creeps('defender'), (creep) => creep.name in Memory.defenders[roomName].creeps);
+            const defendersPer = defenders.length;
+            if (defendersPer >= count) {
+                break;
+            }
+            const spawn = spawnsMapping[closestRoomName][sK];
+            if (spawn.spawning) {
+                continue;
+            }
+            const newCreep = militaryDefender.create_creep(spawn, roomName);
+            if (newCreep != null) { // if new creep created add to list
+                utilscreep.add_creep(newCreep);
+            }
+        }
+    },
+
+    handle_build_no_spawns_defender(spawnsMapping) {
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (room.controller && room.controller.my)
+                return; // don't spawn defenders in rooms i own for now
+            const data = military.getDefendersNeeded(roomName);
+            if (data == null) // no data no enemies
+                continue;
+            console.log(data)
+            // check if we have defenders
+            const defenderCount = Object.keys(Memory.defenders[roomName].creeps).length;
+            // for now lets just send 1
+            if (defenderCount >= 1) {
+                continue;
+            }
+            creepConstruction.handle_build_no_spawns_defender_helper(spawnsMapping, 1, roomName);
         }
     },
 

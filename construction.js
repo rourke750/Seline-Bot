@@ -237,6 +237,9 @@ var construction = {
         }
         */
         //pos.createFlag();
+        if (!source.room.controller) {
+            return;
+        }
                 
         if (!((Game.time + 40) % 1000 == 0 && source.room.controller.level >= 6)) {
             return

@@ -5,13 +5,26 @@ const normal_creep = [MOVE];
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)]
 ];
+
+let retry = 3;
+let lastDst = null;
  
 var militaryClaimer = {
 
     find_loc: function(creep) {
-        if (Memory.expansion.currentRoom)
+        if (lastDst != null && retry == 0) {
+            // we tried getting the location 3 times time to try somewhere else
+            Memory.rooms[Memory.expansion.currentRoom].lastScouted = Game.time;
+            Memory.expansion.currentRoom = undefined;
+            lastDst = null;
+            retry = 3;
+        }
+        if (Memory.expansion.currentRoom) {
             creep.memory.destLoc = {x: 22, y: 22, roomName: Memory.expansion.currentRoom};
-        // console.log('scout moving to ' + Memory.expansion.currentRoom);
+            lastDst = Memory.expansion.currentRoom;
+            retry--;
+        }
+        
     },
     
     run: function(creep) {

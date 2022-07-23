@@ -1,3 +1,5 @@
+const common = require('common');
+
 const military = {
     watchRooms: function(roomName) {
         const room = Game.rooms[roomName];
@@ -31,7 +33,7 @@ const military = {
         }
     },
 
-    sendDefenders: function(roomName) {
+    getDefendersNeeded: function(roomName) {
         const room = Game.rooms[roomName];
         if (!room) {
             return;
@@ -43,7 +45,7 @@ const military = {
         if (!(roomName in Memory.defenders)) {
             Memory.defenders[roomName] = {};
         }
-        if (!(roomName in Memory.defenders[roomName].creeps)) {
+        if (!Memory.defenders[roomName].creeps) {
             Memory.defenders[roomName].creeps = {};
         }
 
@@ -58,11 +60,37 @@ const military = {
         const hostileCreeps = room.find(FIND_HOSTILE_CREEPS, {
             filter: function(hCreep) {
                 const u = hCreep.owner.username;
-                return Memory.allies[u] != null && Memory.allies[u] == false; // false means enemy
+                return Memory.allies[u] != null && Memory.allies[u].enemy; // false means enemy
             }
         });
 
-        // todo calculate how many defenders are needed to kill attacker
+        if (hostileCreeps.length == 0) {
+            return null;
+        }
+
+        // calculate melee, range, and total health
+        let totalHealth = 0;
+        let totalMelee = 0;
+        let totalRange = 0;
+        for (const k in hostileCreeps) {
+            const c = hostileCreeps[k];
+            totalHealth += c.hits;
+            totalMelee += c.getActiveBodyparts(ATTACK);
+            totalRange += c.getActiveBodyparts(RANGED_ATTACK);
+        }
+        return [totalHealth, totalMelee, totalRange];
+    },
+
+    findHostilesFromRoomData: function() {
+        const rooms = Memory.rooms;
+        for (const k in rooms) {
+            const roomData = rooms[k];
+            if (!roomData.type) 
+                continue;
+            if (roomData.type == common.roomMapping.RESERVED || roomData.type == common.roomMapping.OWNED) {
+                console.log(`Room ${k} is owned by ${roomData.own} and currently has enemies ${roomData.eCP}`);
+            }
+        }
     },
 
     generateThreads: function(roomName) {

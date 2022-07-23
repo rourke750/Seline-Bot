@@ -9,6 +9,7 @@ const roleScout = require('roles.scout');
 const militaryClaimer = require('military.claimer');
 const militaryDefender = require('military.defender');
 const militaryTower = require('military.tower');
+const military = require('military');
 
 const construction = require('construction');
 
@@ -68,6 +69,7 @@ for (const pMap in profilerMapings) {
 global.utils = utils;
 global.pathFinder = pathFinder;
 global.os = os;
+global.military = military;
 
 function handleFlags() {
     const m = Memory['flags'];
@@ -160,11 +162,21 @@ function loopSpawns() {
         }
         os.newThread(name, f, 10);
     }
+
     name = 'main-handle-creep-spawning-scouts'
     if (!os.existsThread(name)) {
         const f = function() {
             const mapping = utilscreep.getRoomToSpawnMapping();
             creepConstruction.handle_build_no_spawns_scout(mapping);
+        }
+        os.newThread(name, f, 10);
+    }
+
+    name = 'main-handle-creep-spawning-defenders'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = utilscreep.getRoomToSpawnMapping();
+            creepConstruction.handle_build_no_spawns_defender(mapping);
         }
         os.newThread(name, f, 10);
     }

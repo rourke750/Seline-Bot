@@ -62,6 +62,13 @@ var expansion = {
             return creep.owner.username in Memory.allies && Memory.allies[creep.owner.username].enemy;
         }});
         room.memory.eCP = enemies.length > 0; // enemies currently present
+        
+        // check for minerals
+        const minerals = room.find(FIND_MINERALS);
+        for (const k in minerals) {
+            const m = minerals[k];
+            room.memory.minType = m.mineralType;
+        }
     },
 
     isLayoutValid: function(room, array, xpos, ypos) {
@@ -227,7 +234,7 @@ var expansion = {
             const f = function() {
                 expansion.scoutRoom();
             }
-            os.newTimedThread(name, f, 20, 0, 30);
+            os.newTimedThread(name, f, 20, 0, 20);
         }
     }
 }
