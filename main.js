@@ -87,6 +87,9 @@ function handleFlags() {
     if (m.capture == null) {
         m.capture = {};
     }
+    if (m.captureAuto == null) { // automatic flag
+        m.captureAuto = {};
+    }
 
     for (const k in Game.flags) {
         const v = Game.flags[k];
@@ -130,7 +133,11 @@ function handleFlags() {
     }
 
     // delete flags that are no longer there
-    for (const flagType in m){
+    for (const flagType in m) {
+        if (flagType == 'captureAuto') {
+            continue; // skip if capture auto as its self generated
+        }
+
         const roomNames = m[flagType];
         for (const roomName in roomNames) {
             if (!(roomName in roomFlags) || !(flagType in roomFlags[roomName])) {
@@ -177,6 +184,15 @@ function loopSpawns() {
         const f = function() {
             const mapping = utilscreep.getRoomToSpawnMapping();
             creepConstruction.handle_build_no_spawns_defender(mapping);
+        }
+        os.newThread(name, f, 10);
+    }
+
+    name = 'main-handle-creep-spawning-builders'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = utilscreep.getRoomToSpawnMapping();
+            creepConstruction.handle_build_no_spawns_builder(mapping);
         }
         os.newThread(name, f, 10);
     }

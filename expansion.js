@@ -2,6 +2,9 @@ const os = require('os');
 const common = require('common');
 const pathFinder = require('pathFinder');
 
+const utilscreep = require('utilscreep');
+const utilsroom = require('utilsroom');
+
 var expansion = {
     /**
      * This function will look at the rooms currently owner and scan a box around them to be discovered by other expansion methods.
@@ -206,18 +209,80 @@ var expansion = {
                 break;
         }
         if (found) {
-            console.log('found expansion ' + tempX + ' ' + tempY);
-            room.memory.spawnMasterX = tempX;
-            room.memory.spawnMasterY = tempY;
-        } else 
-            console.log('expansion not found')
+            room.memory.spawnMasterX = tempX + 5;
+            room.memory.spawnMasterY = tempY + 4;
+        }
         room.memory.lastScouted = Game.time;
         // now find the next room to scout
         expansion.findNextScoutRoom();
     },
 
-    sendScout: function() {
+    expandRooms: function() {
+        return
+        if (Object.keys(Memory.flags.captureAuto).length > 0) {
+            // check if we have claimed the room yet
+            const k = Object.keys(Memory.flags.captureAuto)[0];
+            const room = Game.rooms[k];
+            // check if no vision or if the room isnt claimed, if it isnt then return
+            if (!room || !room.controller.my) {
+                return; // we already have a room we are claiming skip
+            }
+            // we have both vision and the controller belongs to us, clear it
+            delete Memory.flags.captureAuto[k];
+            // clear flags
+            const flags = room.find(FIND_FLAGS)
+            for (const k in flags) {
+                flags[k].remove();
+            }
+        }
 
+        // go through rooms and see whats a good room to expand to, do 1 at a time and do it by closeness to a room we own
+        // first get rooms we own
+        let roomCount = 0;
+        const roomNames = [];
+        for (const k in Game.rooms) {
+            const room = Game.rooms[k];
+            if (room.controller && room.controller.my) {
+                roomCount++;
+                roomNames.push(k);
+            }
+        }
+        if (roomCount >= Game.gcl.level) 
+            return; // room count is max nothing to do
+
+        // now go through rooms in memory and add to an array of all rooms that look okay to expand to
+        const expandRooms = [];
+        for (const k in Memory.rooms) {
+            if (Game.rooms[k] != null && Game.rooms[k].controller && Game.rooms[k].controller.my) {
+                continue; // room is already owned skip
+            }
+            const room = Memory.rooms[k];
+            if (room.spawnMasterX != null && Object.keys(room.sources).length >= 2 && !room.eCP) {
+                // room has a plan, more than 1 source, and isnt enemy controller
+                expandRooms.push(k);
+            }
+        }
+
+        // if we have not rooms return
+        if (expandRooms.length == 0) {
+            return;
+        }
+
+        // go through each room and see which is closest to a room we already own
+        const mapping = utilscreep.getRoomToSpawnMapping();
+        let closestDistance = 999999;
+        let closestName;
+        for (const k in expandRooms) {
+            const room = expandRooms[k];
+            const closestRoom = utilsroom.getClosestRoomFromRoom(mapping, room);
+            let dis = Game.map.getRoomLinearDistance(closestRoom, room);
+            if (dis < closestDistance) {
+                closestDistance = dis;
+                closestName = room;
+            }
+        }
+
+        Memory.flags.captureAuto[closestName] = {};
     },
 
     generateThreads: function() {
@@ -235,6 +300,14 @@ var expansion = {
                 expansion.scoutRoom();
             }
             os.newTimedThread(name, f, 20, 0, 20);
+        }
+
+        name = 'expansion-expand-rooms'
+        if (!os.existsThread(name)) {
+            const f = function() {
+                expansion.expandRooms();
+            }
+            os.newTimedThread(name, f, 20, 5, 100);
         }
     }
 }

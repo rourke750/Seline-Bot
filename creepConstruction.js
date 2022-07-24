@@ -1,4 +1,5 @@
 const utilscreep = require('utilscreep');
+const utilsRoom = require('utilsroom');
 
 const roleHarvester = require('roles.harvester');
 const roleUpgrader = require('roles.upgrader');
@@ -54,7 +55,7 @@ var creepConstruction = {
                 const upgraderPer = utils.notZero((roomUpgraders.length / roleUpgrader.get_harvest_count(spawn.room)));
                 const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
                 const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
-                const claimersPer = utils.notZero((claimers.length / utils.get_scout_count()));
+                const claimersPer = utils.notZero((claimers.length / utils.get_claimer_count()));
                 const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / roleSmartHarvester.get_harvest_count(spawn.room)));
                 const haulersPerr = utils.notZero((roomHaulers.length / roleHauler.get_harvest_count(spawn.room)));
                 
@@ -99,15 +100,8 @@ var creepConstruction = {
             return;
         }
         const roomName = Memory.expansion.currentRoom;
-        let closest = 9999999;
-        let closestRoomName = null;
-        for (const otherRoomName in spawnsMapping) {
-            const d = Game.map.getRoomLinearDistance(roomName, otherRoomName);
-            if (d < closest) {
-                closest = d;
-                closestRoomName = otherRoomName;
-            }
-        }
+        let closestRoomName = utilsRoom.getClosestRoomFromRoom(spawnsMapping, roomName);
+
         for (const sK in spawnsMapping[closestRoomName]) {
             const scouts = utilscreep.get_filtered_creeps('scout');
             const spawn = spawnsMapping[closestRoomName][sK];
@@ -120,7 +114,7 @@ var creepConstruction = {
                 const newCreep = roleScout.create_creep(spawn);
                 if (newCreep != null) { // if new creep created add to list
                     utilscreep.add_creep(newCreep);
-                    console.log('building creep construction from ' + closestRoomName + ' destination ' + roomName);
+                    //console.log('building creep construction from ' + closestRoomName + ' destination ' + roomName);
                 }
                 continue;
             }
@@ -128,15 +122,8 @@ var creepConstruction = {
     },
 
     handle_build_no_spawns_defender_helper: function(spawnsMapping, count, roomName) {
-        let closest = 9999999;
-        let closestRoomName = null;
-        for (const otherRoomName in spawnsMapping) {
-            const d = Game.map.getRoomLinearDistance(roomName, otherRoomName);
-            if (d < closest) {
-                closest = d;
-                closestRoomName = otherRoomName;
-            }
-        }
+        let closestRoomName = utilsRoom.getClosestRoomFromRoom(spawnsMapping, roomName);
+
         for (const sK in spawnsMapping[closestRoomName]) {
             const defenders = _.filter(utilscreep.get_filtered_creeps('defender'), (creep) => creep.name in Memory.defenders[roomName].creeps);
             const defendersPer = defenders.length;
@@ -162,53 +149,44 @@ var creepConstruction = {
             const data = military.getDefendersNeeded(roomName);
             if (data == null) // no data no enemies
                 continue;
-            console.log(data)
             // check if we have defenders
             const defenderCount = Object.keys(Memory.defenders[roomName].creeps).length;
             // for now lets just send 1
             if (defenderCount >= 1) {
                 continue;
             }
+            console.log('creepConstruction ' + roomName + ' has enemies, sending defenders')
             creepConstruction.handle_build_no_spawns_defender_helper(spawnsMapping, 1, roomName);
         }
     },
 
-    handle_build_no_spawns_builder(roomName) {
-        let closest = 9999999;
-        let closestRoomName = null;
-        for (const otherRoomName in spawnsMapping) {
-            const d = Game.map.getRoomLinearDistance(roomName, otherRoomName);
-            if (d < closest) {
-                closest = d;
-                closestRoomName = otherRoomName;
-            }
-        }
-        for (const sK in spawnsMapping[closestRoomName]) {
-            const builders = utilscreep.get_filtered_creeps('builder');
-            const scouts = utilscreep.get_filtered_creeps('scout');
-            const spawn = spawnsMapping[closestRoomName][sK];
-            if (spawn.spawning) {
+    handle_build_no_spawns_builder(spawnsMapping) {
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            const spawnMaster = room.memory.spawnMaster;
+            // check if the spawn exist, if it does then we dont need to send builders from another room
+            if (spawnMaster != null && Game.spawns[spawnMaster]) {
                 continue;
             }
-            // builders
-            const roomBuilders = _.filter(builders, (creep) => creep.memory.home_room == roomName);
-            const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(Game.rooms[roomName])));
-            if (buildersPer < 1) {
-                const newCreep = roleBuilder.create_creep(spawn, roomName);
-                if (newCreep != null) { // if new creep created add to list
-                    utilscreep.add_creep(newCreep);
+            let closestRoomName = utilsRoom.getClosestRoomFromRoom(spawnsMapping, roomName);
+
+            for (const sK in spawnsMapping[closestRoomName]) {
+                const builders = utilscreep.get_filtered_creeps('builder');
+                
+                const spawn = spawnsMapping[closestRoomName][sK];
+                if (spawn.spawning) {
+                    continue;
                 }
-                continue;
-            }
-            // scouts
-            const scoutsPer = scouts.length;
-            if (scoutsPer < 1) {
-                const newCreep = roleScout.create_creep(spawn);
-                if (newCreep != null) { // if new creep created add to list
-                    utilscreep.add_creep(newCreep);
-                    console.log('building creep construction ' + roomName);
+                // builders
+                const roomBuilders = _.filter(builders, (creep) => creep.memory.home_room == roomName);
+                const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(Game.rooms[roomName])));
+                if (buildersPer < 1) {
+                    const newCreep = roleBuilder.create_creep(spawn, roomName);
+                    if (newCreep != null) { // if new creep created add to list
+                        utilscreep.add_creep(newCreep);
+                    }
+                    continue;
                 }
-                continue;
             }
         }
     }

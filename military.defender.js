@@ -25,7 +25,9 @@ var militaryDefender = {
             utils.move_to(creep);
         }
         if (creep.memory.destId == null)
-            creep.memory.destId = creep.pos.findClosestByPath(FIND_HOSTILE_CREEPS);
+            creep.memory.destId = creep.pos.findClosestByPath(FIND_HOSTILE_CREEPS, {filter: function(creep) {
+                return creep.owner in Memory.allies && Memory.allies[creep.owner].enemy;
+            }});
         
         // move to enemy
         const enemy = Game.getObjectById(creep.memory.destId)

@@ -8,7 +8,35 @@ const pathFinder = require('pathFinder');
 
 const military = require('military');
 
+let closestRoomMappingSpawn = {};
+let closestRoomMappingTick = Game.time;
+
 var utilsroom = {
+
+    getClosestRoomFromRoom(spawnsMapping, roomName) {
+        // first if game tick isnt the same than clear it
+        if (Game.time != closestRoomMappingTick) {
+            closestRoomMappingSpawn = {};
+            closestRoomMappingTick = Game.time;
+        }
+
+        // check if the mapping exists
+        if (roomName in closestRoomMappingSpawn) {
+            return closestRoomMappingSpawn[roomName];
+        }
+        let closest = 9999999;
+        let closestRoomName = null;
+        for (const otherRoomName in spawnsMapping) {
+            const d = Game.map.getRoomLinearDistance(roomName, otherRoomName);
+            if (d < closest) {
+                closest = d;
+                closestRoomName = otherRoomName;
+            }
+        }
+        closestRoomMappingSpawn[roomName] = closestRoomName;
+        return closestRoomName;
+    },
+
     constructRooms: function(room) {
         const roomName = room.name
         let name = 'construction-' + roomName + '-watcher'

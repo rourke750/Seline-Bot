@@ -21,8 +21,11 @@ const military = {
         for (const k in attackEvents) {
             const v = attackEvents[k];
             const caster = Game.getObjectById(v.objectId);
+            if (!caster) {
+                console.log('military bug with event data caster null\n' + JSON.stringify(v));
+            }
             const target = Game.getObjectById(v.data.targetId);
-            if (!caster.my && ((target instanceof Creep && target.my) || (target instanceof Structure && room.controller.my))) {
+            if (!caster.my && ((target instanceof Creep && target.my) || (target instanceof Structure && room.controller && room.controller.my))) {
                 // it's attacking me or something
                 const attackerOwner = caster.owner.username;
                 if (!(attackerOwner in Memory.allies)) {
@@ -60,7 +63,7 @@ const military = {
         const hostileCreeps = room.find(FIND_HOSTILE_CREEPS, {
             filter: function(hCreep) {
                 const u = hCreep.owner.username;
-                return Memory.allies[u] != null && Memory.allies[u].enemy; // false means enemy
+                return Memory.allies[u] != null && Memory.allies[u].enemy;
             }
         });
 

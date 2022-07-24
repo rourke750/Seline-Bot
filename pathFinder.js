@@ -88,10 +88,11 @@ const pathGenerator = {
             }
         )
         if (v.incomplete) {
+            return Room.serializePath([]);
             //console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' avoid creeps ' + opts.avoidCreep +' paths ' + v.path)
         }
         if (v.path.length == 0) {
-            console.log('Zero path ' + creep.name + ' ' + creep.pos + ' to ' + dstX + ' ' + dstY + ' cost ' +v.cost + ' range ' + range)
+            //console.log('Zero path ' + creep.name + ' ' + creep.pos + ' to ' + dstX + ' ' + dstY + ' cost ' +v.cost + ' range ' + range)
             return Room.serializePath([]);
         }
         const convertedPath = this.convertPathFinderSearch(creep.pos, v.path)
@@ -141,6 +142,10 @@ const pathGenerator = {
                 }
             }
         )
+
+        if (v.incomplete) {
+            return Room.serializePath([]);
+        }
         
         // calculate start of highway
         var startPos = 0;
@@ -285,6 +290,24 @@ const pathGenerator = {
 
         Memory.costMatrix[roomName] = costs.serialize();
         return true;
+    },
+
+    test: function() {
+        const v = PathFinder.search({x: 33, y: 18, roomName: 'W3N7'}, new RoomPosition(23, 23, 'W2N5'),
+            {
+                plainCost: plainCost,
+                swampCost: swampCostConst,
+                roomCallback: function(roomName) {
+                    if (roomName in Memory.costMatrix)
+                        return PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
+                    else if (pathGenerator.build_cost_matrix(roomName)) {
+                        return PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
+                    }
+                    return null;
+                }
+            }
+        )
+        return JSON.stringify(v);
     },
 
     generateThreads: function(roomName) {

@@ -7,7 +7,7 @@ const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)]
 ];
 
-const keyFlags = ['reserve', 'capture']
+const keyFlags = ['reserve', 'capture', 'captureAuto']
  
 var militaryClaimer = {
     get_room_controller: function(creep) {
@@ -28,9 +28,11 @@ var militaryClaimer = {
                     continue;
                 if (flagType == 'capture' && Object.keys(l).length == 1)
                     continue;
+                if (flagType == 'captureAuto' && Object.keys(l).length == 1)
+                    continue;
                 creep.memory.destLoc = {x: 22, y: 22, roomName: roomName};
                 rooms[roomName][creep.name] = true;
-                if (flagType == 'capture') {
+                if (flagType == 'capture' || flagType == 'captureAuto') {
                     creep.memory.capture = true;
                 }
                 return true;
