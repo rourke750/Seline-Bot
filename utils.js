@@ -317,6 +317,7 @@ var utils = {
             this.cleanup_move_to(creep);
             // we need to check again if we want to use a specily refill
             let found = creep.store.getFreeCapacity() != 0;
+            const role = creep.memory.role;
             if (!found && (role === 'builder' || role === 'upgrader' || role === 'repairer')) {
                 found = this.findContainer(creep);
             }
@@ -360,8 +361,12 @@ var utils = {
         // initialize traverse room, ie get path and other logic
         creep.memory.dstRoom = dstRoom
         // find highway traversal
-        creep.memory.dstRoomPath = pathFinder.find_highway(creep.pos, dstRoom);
+        const highWayPath = pathFinder.find_highway(creep.pos, dstRoom);
+        if (highWayPath == null) {
+            return;
+        }
         
+        creep.memory.dstRoomPath = highWayPath;
         const roomPosArray = {};
         const p = pathFinder.find_path_in_room(creep, 
             creep.memory.dstRoomPath.start.x, 
@@ -378,7 +383,7 @@ var utils = {
         delete creep.memory.dstRoomPath; // it is no longer needed get rid of it
     },
     
-    move_to: function(creep, newRoomFunc = null, avoidCreepIfStuck=true) {
+    move_to: function(creep, newRoomFunc=null, avoidCreepIfStuck=true) {
         // hanldes destinations even in other rooms
         const v = this.move_to_helper(creep);
         if (creep.memory.current_path == null || creep.memory.current_path == undefined) {
@@ -397,19 +402,24 @@ var utils = {
         if (creep.memory.last_pos != null && creep.pos.isEqualTo(creep.memory.last_pos.x, creep.memory.last_pos.y) 
             && creep.fatigue == 0 && avoidCreepIfStuck) {
             // get the path we are currently traveling
-            
             const sePath = creep.memory.current_path[creep.room.name];
             if (sePath != "" && sePath != null) {
-                
-            if (creep.name == 'Claimer83533332') {
-                console.log(JSON.stringify(creep.memory.current_path))
-            }
                 const oldPath = Room.deserializePath(sePath);
                 const finalDest = oldPath[oldPath.length - 1];
                 // now we can take the old path get the last element and go there
                 const p = pathFinder.find_path_in_room(creep, finalDest.x, finalDest.y, {avoidCreep:true});
                 creep.memory.current_path[creep.room.name] = p;
             }
+            // handle room traversal while stuck
+            if (sePath != null && sePath == "" && creep.pos.roomName != v[2]) {
+                console.log('utils handling path extension for ' + creep.name)
+                utils.cleanup_move_to(creep);
+                this.initialize_traverse_rooms(creep, v[2]); // recalculate
+            }
+        }
+
+        if (!creep.memory.current_path) {
+            return;
         }
         
         // lets get the destination

@@ -124,8 +124,6 @@ const pathGenerator = {
             return Memory.highway[pos.roomName][dstRoom];
         }
         
-        Memory.highway[pos.roomName][dstRoom] = {};
-        
         // We need to create one, in future will precalculate this
         // lets take the creep position and then from that
         const v = PathFinder.search(pos, new RoomPosition(23, 23, dstRoom),
@@ -143,9 +141,11 @@ const pathGenerator = {
             }
         )
 
-        if (v.incomplete) {
-            return Room.serializePath([]);
-        }
+        //if (v.incomplete) {
+        //    return null;
+        //}
+        
+        Memory.highway[pos.roomName][dstRoom] = {};
         
         // calculate start of highway
         var startPos = 0;

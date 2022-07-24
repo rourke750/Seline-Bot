@@ -22,7 +22,9 @@ const military = {
             const v = attackEvents[k];
             const caster = Game.getObjectById(v.objectId);
             if (!caster) {
-                console.log('military bug with event data caster null\n' + JSON.stringify(v));
+                //console.log('military bug with event data caster null\n' + JSON.stringify(v));
+                // if caster is null we do not have insight and might as well skip
+                continue;
             }
             const target = Game.getObjectById(v.data.targetId);
             if (!caster.my && ((target instanceof Creep && target.my) || (target instanceof Structure && room.controller && room.controller.my))) {

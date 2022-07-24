@@ -96,6 +96,7 @@ var creepConstruction = {
     },
 
     handle_build_no_spawns_scout(spawnsMapping) {
+        return
         if (!Memory.expansion.currentRoom) {
             return;
         }
