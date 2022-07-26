@@ -102,7 +102,6 @@ var utils = {
             return true;
         }
         return false;
-        
     },
 
     findContainer: function(creep) {
@@ -353,6 +352,7 @@ var utils = {
         const obj = Game.getObjectById(creep.memory.destId);
         if (obj == null) {
             console.log(creep.name + ' ' + creep.pos + ' ' + creep.memory.destId)
+            return null;
         }
         return [obj.pos.x, obj.pos.y, obj.pos.roomName];
     },
@@ -361,23 +361,23 @@ var utils = {
         // initialize traverse room, ie get path and other logic
         creep.memory.dstRoom = dstRoom
         // find highway traversal
-        const highWayPath = pathFinder.find_highway(creep.pos, dstRoom);
+        const pFind = pathFinder.find_highway(creep.pos, dstRoom);
+        const highWayPath = pFind[0]
         if (highWayPath == null) {
             return;
         }
         
-        creep.memory.dstRoomPath = highWayPath;
         const roomPosArray = {};
         const p = pathFinder.find_path_in_room(creep, 
-            creep.memory.dstRoomPath.start.x, 
-            creep.memory.dstRoomPath.start.y);
+            pFind[1].x, 
+            pFind[1].y);
 
         roomPosArray[creep.room.name] = p;
-        roomPosArray[dstRoom] = null;
+        roomPosArray[dstRoom] = null;// this is so it used the creep find method to see where it should go
         
         const mergedPath = {
             ...roomPosArray,
-            ...creep.memory.dstRoomPath.paths
+            ...highWayPath
         };
         creep.memory.current_path = mergedPath;
         delete creep.memory.dstRoomPath; // it is no longer needed get rid of it
@@ -387,6 +387,7 @@ var utils = {
         // hanldes destinations even in other rooms
         const v = this.move_to_helper(creep);
         if (creep.memory.current_path == null || creep.memory.current_path == undefined) {
+            
             if (v[2] != creep.pos.roomName) {
                 // not same room handle traverse room logic
                 this.initialize_traverse_rooms(creep, v[2]);
@@ -426,7 +427,9 @@ var utils = {
         let p = creep.memory.current_path[creep.room.name];
         if (p == null || p == "") {
             // we need to calculate the path, first lets check if we have a function
-            if (newRoomFunc != null) {
+            if (creep.memory.dstRoom != null && creep.room.name != creep.memory.dstRoom) {
+                this.initialize_traverse_rooms(creep, creep.memory.dstRoom); // recalculate
+            } else if (newRoomFunc != null) {
                 // if this value is not null it means we have been provided a function for finding where to go next
                 const target = newRoomFunc(creep);
                 //todo target can be null if all energy null
@@ -438,14 +441,14 @@ var utils = {
                 creep.memory.destId = target.id;
                 creep.memory.destLoc = target.pos;
                 // if we have a function this should normally be for coming into destination room
-                const newP = pathFinder.find_path_in_room(creep, target.pos.x, target.pos.y);
+                const newP = pathFinder.find_path_in_room(creep, target.pos.x, target.pos.y, {avoidCreep: true});
                 creep.memory.current_path[creep.pos.roomName] = newP;
             } else if (v[0] != null && v[1] != null && v[2] == creep.room.name) {
                 // if we dont have a new roomfunc used for calculating where to go next we will instead use the saved cords for returning
-                const newP = pathFinder.find_path_in_room(creep, v[0], v[1]);
+                const newP = pathFinder.find_path_in_room(creep, v[0], v[1], {avoidCreep: true});
                 creep.memory.current_path[creep.pos.roomName] = newP;
             } else {
-                console.log('utils creep could not find path to destination clearing ' + creep.name)
+                console.log('utils creep could not find path to destination clearing ' + creep.name )
                 utils.cleanup_move_to(creep);
                 return;
             }

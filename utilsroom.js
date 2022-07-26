@@ -66,11 +66,12 @@ var utilsroom = {
 
     upgradeRooms: function(r) {
         const roomName = r.name;
-        let name = 'upgradeRooms-' + roomName + '-watcher'
-        if (!os.existsThread(name)) {
+        let n = 'upgradeRooms-' + roomName + '-watcher'
+        if (!os.existsThread(n)) {
             const f = function() {
                 for (const role in common.creepMapping) {
-                    if (!(roomName in Game.rooms) || Game.rooms[roomName].energyCapacityAvailable == 0) {
+                    // todo i might need to fix this maybe itll generate in every room?
+                    if (!(roomName in Game.rooms)) { //|| Game.rooms[roomName].energyCapacityAvailable == 0) {
                         continue;
                     }
                     const name = 'roomUpgrader-' + roomName + '-role-' + role;
@@ -78,8 +79,11 @@ var utilsroom = {
                         const f = function() {
                             const room = Game.rooms[roomName];
                             if (!room) {
-                                console.log('utilsroom upgrade rooms room is empty ' + roomName + ' ' + room);
+                                //console.log('utilsroom upgrade rooms room is empty ' + roomName + ' ' + room);
                                 return; 
+                            }
+                            if (!room.controller || !room.controller.my || room.energyCapacityAvailable == 0) {
+                                return;
                             }
                             common.creepMapping[role].upgrade(room);
                         }
@@ -87,7 +91,7 @@ var utilsroom = {
                     }
                 }
             }
-            os.newTimedThread(name, f, 10, 10, 100); // spawn a new timed thread that runs every 40 ticks
+            os.newTimedThread(n, f, 10, 10, 100); // spawn a new timed thread that runs every 40 ticks
         }
     },
 

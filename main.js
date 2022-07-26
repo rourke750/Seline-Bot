@@ -29,6 +29,8 @@ const expansion = require('expansion');
 
 const creepConstruction = require('creepConstruction');
 
+const commands = require('commands');
+
 const creepMapping = {
     'harvester' : roleHarvester,
     'upgrader' : roleUpgrader,
@@ -70,6 +72,7 @@ global.utils = utils;
 global.pathFinder = pathFinder;
 global.os = os;
 global.military = military;
+global.commands = commands;
 
 function handleFlags() {
     const m = Memory['flags'];

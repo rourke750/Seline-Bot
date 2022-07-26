@@ -28,7 +28,7 @@ var creepConstruction = {
             const spawn = spawns[sK];
             const roomHarvesters = utilscreep.get_role_home_filtered_creeps(roomName, 'harvester');
             if (roomHarvesters.length < 4) {
-                const newCreep = roleHarvester.create_creep(spawn);
+                const newCreep = roleHarvester.create_creep(spawn); 
                 if (newCreep != null) { // if new creep created add to list
                     utilscreep.add_creep(newCreep);
                 }
@@ -96,7 +96,6 @@ var creepConstruction = {
     },
 
     handle_build_no_spawns_scout(spawnsMapping) {
-        return
         if (!Memory.expansion.currentRoom) {
             return;
         }
@@ -138,6 +137,8 @@ var creepConstruction = {
             const newCreep = militaryDefender.create_creep(spawn, roomName);
             if (newCreep != null) { // if new creep created add to list
                 utilscreep.add_creep(newCreep);
+                Memory.defenders[roomName].creeps[newCreep.name] = true;
+                console.log('creepConstruction ' + roomName + ' has enemies, sending defenders')
             }
         }
     },
@@ -146,7 +147,7 @@ var creepConstruction = {
         for (const roomName in Game.rooms) {
             const room = Game.rooms[roomName];
             if (room.controller && room.controller.my)
-                return; // don't spawn defenders in rooms i own for now
+                continue; // don't spawn defenders in rooms i own for now
             const data = military.getDefendersNeeded(roomName);
             if (data == null) // no data no enemies
                 continue;
@@ -156,8 +157,8 @@ var creepConstruction = {
             if (defenderCount >= 1) {
                 continue;
             }
-            console.log('creepConstruction ' + roomName + ' has enemies, sending defenders')
             creepConstruction.handle_build_no_spawns_defender_helper(spawnsMapping, 1, roomName);
+            break // only create
         }
     },
 

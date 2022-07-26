@@ -46,12 +46,15 @@ const pathGenerator = {
         // get the cost matrix for the room
         // check if in cache
         let range = 0
-        const struct = creep.room.lookForAt(LOOK_STRUCTURES, dstX, dstY);
-        if (struct.length > 0) {
-            for (s in struct) {
-                if (struct[s].structureType in obsticalD) {
-                    range = 1;
-                    break;
+        if (creep.room) {
+            const struct = creep.room.lookAt(dstX, dstY);
+            if (struct.length > 0) {
+                for (s in struct) {
+                    if ((struct[s].type == 'structure' && struct[s].structure.structureType in obsticalD) || 
+                    struct[s].type in obsticalD || (struct[s].type == 'constructionSite' && struct[s].constructionSite.structureType in obsticalD)) {
+                        range = 1;
+                        break;
+                    }
                 }
             }
         }
@@ -61,6 +64,9 @@ const pathGenerator = {
                 plainCost: plainCost,
                 swampCost: opts.swampCost,
                 roomCallback: function(roomName) {
+                    if (roomName != creep.pos.roomName) { // we only want paths in this room
+                        return false;
+                    }
                     let c = null
                     if (roomName in Memory.costMatrix)
                         c = PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
@@ -87,6 +93,7 @@ const pathGenerator = {
                 maxOps: opts.maxOps
             }
         )
+
         if (v.incomplete) {
             return Room.serializePath([]);
             //console.log('incomplete dst to ' + dstX + ' ' + dstY + ' from ' + creep.pos + ' range ' + range + ' ops ' + v.ops + ' avoid creeps ' + opts.avoidCreep +' paths ' + v.path)
@@ -96,41 +103,23 @@ const pathGenerator = {
             return Room.serializePath([]);
         }
         const convertedPath = this.convertPathFinderSearch(creep.pos, v.path)
-        if (!(creep.room.name in convertedPath)) {
+        if (!(creep.pos.roomName in convertedPath)) {
             return Room.serializePath([]);
         }
-        const p = Room.serializePath(convertedPath[creep.room.name]);
+        const p = Room.serializePath(convertedPath[creep.pos.roomName]);
         return p;
     },
-    
-    find_highway: function(pos, dstRoom) {
-        // We want to see if a path to the dstRoom already exists if not we need to create it
-        // We are just going to set it to the middle of the room
-        // todo in the future come up with a better way to do this
-        if (Memory.highway == null) {
-            Memory.highway = {}; // will be starting_room: {dst_room: [starting room pos, Pathfinder path]}
-        }
-        
-        if (Memory.costMatrix == null) {
-            Memory.costMatrix = {};
-        }
-        
-        if (!(pos.roomName in Memory.highway)) {
-            Memory.highway[pos.roomName] = {}
-        }
-        
-        if (dstRoom in Memory.highway[pos.roomName]) {
-            // destination exists lets return it
-            return Memory.highway[pos.roomName][dstRoom];
-        }
-        
-        // We need to create one, in future will precalculate this
-        // lets take the creep position and then from that
-        const v = PathFinder.search(pos, new RoomPosition(23, 23, dstRoom),
+
+    findHighwayGetPath: function(pos, dstRoom) {
+        const oRoom = Game.map.describeExits(pos.roomName)[this.getExitBasedOnPos(pos)];
+        return PathFinder.search(pos, {'pos': new RoomPosition(23, 23, dstRoom), range: 20},
             {
                 plainCost: plainCost,
                 swampCost: swampCostConst,
+                maxOps: 2000,
                 roomCallback: function(roomName) {
+                    if (roomName == oRoom)
+                        return false;
                     if (roomName in Memory.costMatrix)
                         return PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
                     else if (pathGenerator.build_cost_matrix(roomName)) {
@@ -140,13 +129,9 @@ const pathGenerator = {
                 }
             }
         )
+    },
 
-        //if (v.incomplete) {
-        //    return null;
-        //}
-        
-        Memory.highway[pos.roomName][dstRoom] = {};
-        
+    getStartAndExit: function(pos, dstRoom, v) {
         // calculate start of highway
         var startPos = 0;
         for (const path in v.path) {
@@ -167,28 +152,108 @@ const pathGenerator = {
                 break;
             }
         }
-        
-        // set the start path 
-        Memory.highway[pos.roomName][dstRoom].start = v.path[startPos];
-        if (endPos - startPos > 1) {
-            // room is not next to eachother
-            
-            const roomsPaths = this.convertPathFinderSearch(v.path[startPos], v.path.slice(startPos+1, endPos));
-            
-            // now what we want to do is serialize for memory saving
-            const serializedRoomPaths = {};
-            for (const r in roomsPaths) {
-                serializedRoomPaths[r] = Room.serializePath(roomsPaths[r].slice(1));
-            }
-            
-            Memory.highway[pos.roomName][dstRoom].paths = serializedRoomPaths;
-            Memory.highway[pos.roomName][dstRoom].cost = v.cost;
-            // set first position in the destination
-            Memory.highway[pos.roomName][dstRoom].end = v.path[endPos];
-        } else {
-            Memory.highway[pos.roomName][dstRoom].end = v.path[startPos + 1];
+        return [startPos, endPos];
+    },
+    
+    find_highway: function(pos, dstRoom) {
+        // We want to see if a path to the dstRoom already exists if not we need to create it
+        // We are just going to set it to the middle of the room
+        // todo in the future come up with a better way to do this
+        if (Memory.highway == null) {
+            Memory.highway = {}; // will be starting_room: {dst_room: [starting room pos, Pathfinder path]}
         }
-        return Memory.highway[pos.roomName][dstRoom];
+        
+        if (Memory.costMatrix == null) {
+            Memory.costMatrix = {};
+        }
+
+        paths = {};
+        const route = Game.map.findRoute(pos.roomName, dstRoom);
+        let currentRoom = pos.roomName;
+        let start;
+        for (const k in route) {
+            let nextStart;
+            const dir = route[k];
+            if (k == 0) {
+                start = pos;
+            }
+
+            if (!(currentRoom in Memory.highway)) {
+                Memory.highway[currentRoom] = {};
+            }
+
+            // let's check if the current room has an exit
+            let exits = Memory.highway[currentRoom].exits;
+            if (!exits) { // initialize if its missing
+                Memory.highway[currentRoom].exits = {};
+                exits = Memory.highway[currentRoom].exits;
+            }
+
+            let tempPath;
+            if (!(dir.exit in exits)) {
+                // no exit generate it
+                const v = this.findHighwayGetPath(start, dir.room);
+                if (v.incomplete) {
+                    console.log('pathFinder incomplete path when trying to find highway room: ',dir.room, JSON.stringify(v));
+                    return; // exit dont want the shit path
+                }
+                const r = this.getStartAndExit(start, dir.room, v);
+                const s = r[0]; // last position before next room
+                const e = r[1]; // first position in new room
+
+                exits[dir.exit] = {x: v.path[s].x, y: v.path[s].y};
+                //console.log(s, e, JSON.stringify(v.path))
+
+                // add exit to other room
+                if (!(dir.room in Memory.highway)) {
+                    Memory.highway[dir.room] = {};
+                }
+                if (!Memory.highway[dir.room].exits) {
+                    Memory.highway[dir.room].exits = {};
+                }
+                Memory.highway[dir.room].exits[this.getOppositeExit(dir.exit)] = {x: v.path[e].x, y: v.path[e].y};
+                tempPath = this.convertPathFinderSearch(start, v.path.slice(0, e));
+                // set start for next loop
+                nextStart = v.path[e];
+            } else {
+                // if the direction existed in exits it means the adjacent room has an exit to we can use for start
+                const t = Memory.highway[dir.room].exits[this.getOppositeExit(dir.exit)];
+                nextStart = new RoomPosition(t.x, t.y, dir.room);
+            }
+
+            // check if we are first or last room if we aren't lets get a pregenerated path
+            const entrance = this.getExitBasedOnPos(start);
+            if (k > 0) {
+                // check if a path exists
+                // need to build out the struct if it doesnt exist
+                if (!Memory.highway[start.roomName].paths) {
+                    Memory.highway[start.roomName].paths = {};
+                }
+                if (!(entrance in Memory.highway[start.roomName].paths)) {
+                    Memory.highway[start.roomName].paths[entrance] = {};
+                }
+
+                // now check if entrance to exit exists, if it doesn't go ahead and save to memory
+                if (!(dir.exit in Memory.highway[start.roomName].paths[entrance])) {
+                    const t = Memory.highway[start.roomName].exits[dir.exit];
+                    const dst = new RoomPosition(t.x, t.y, start.roomName);
+                    if (!tempPath) {
+                        tempPath = {};
+                        tempPath[start.roomName] = Room.deserializePath(this.find_path_in_room({pos:start}, dst.x, dst.y));
+                    }
+                    // save path to memory
+                    Memory.highway[start.roomName].paths[entrance][dir.exit] = Room.serializePath(tempPath[start.roomName]);
+                }
+            }
+
+            // set the paths for each static highway path
+            if (k > 0) {
+                paths[start.roomName] = Memory.highway[start.roomName].paths[entrance][dir.exit];
+            }
+            currentRoom = dir.room;
+            start = nextStart;
+        }
+        return [paths, Memory.highway[pos.roomName].exits[route[0].exit]];
     },
     
     getDirection: function(dx, dy) {
@@ -292,7 +357,29 @@ const pathGenerator = {
         return true;
     },
 
-    test: function() {
+    getOppositeExit(exit) {
+        switch (exit) {
+            case 1: return 5;
+            case 3: return 7;
+            case 5: return 1;
+            case 7: return 3;
+        }
+    },
+
+    getExitBasedOnPos: function(pos) {
+        if (pos.y == 0)
+            return 1;
+        else if (pos.x == 49)
+            return 3;
+        else if (pos.y == 49)
+            return 5;
+        else if (pos.x == 0)
+            return 7;
+        return null;
+    },
+
+    test1: function() {
+        let start = Game.cpu.getUsed()
         const v = PathFinder.search({x: 33, y: 18, roomName: 'W3N7'}, new RoomPosition(23, 23, 'W2N5'),
             {
                 plainCost: plainCost,
@@ -307,7 +394,17 @@ const pathGenerator = {
                 }
             }
         )
+        console.log(Game.cpu.getUsed() - start);
+        start = Game.cpu.getUsed()
+        Game.map.findRoute('W3N7', 'W2N5')
+        console.log(Game.cpu.getUsed() - start);
         return JSON.stringify(v);
+    },
+
+    test: function() {
+        const pos = {pos: {x:8, y: 49, roomName:'W2N8'}, room: Game.rooms['W2N8'], name:'test'}
+        console.log(JSON.stringify(Room.deserializePath(this.find_path_in_room(pos, 28, 43))))
+        
     },
 
     generateThreads: function(roomName) {

@@ -64,7 +64,7 @@ var construction = {
     // build a link near the spawns and roads that are needed
     buildAuxNearSpawn: function(room) {
         // we want to build a link and roads around the spawn
-        if (room.memory.spawnMaster == null) {
+        if (room.memory.spawnMaster == null || !room.controller.my) {
             return;
         }
 
@@ -410,13 +410,16 @@ var construction = {
         const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
         const sources = room.find(FIND_SOURCES);
         let sCost;
-        if (Memory.construction && room.name in Memory.construction && Memory.construction[room.name].costMatrix) {
-            sCost = Memory.construction[room.name].costMatrix
+        if (Memory.costMatrix && room.name in Memory.costMatrix) {
+            sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
         }
         for (const sourceKey in sources) {
             const sourceV = sources[sourceKey];
             const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, sourceV.pos.x, sourceV.pos.y, 
                 {swampCost:2}));
+            if (!sCost) {
+                sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
+            }
             for (var i = 0; i < paths.length; i++) {
                 const path = paths[i];
                 const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
@@ -424,6 +427,7 @@ var construction = {
                 if (ter != 'wall' && struct.length == 0) {
                     //room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
                     memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
+                    sCost.set(path.x, path.y, 1);
                 }
             }
         }
@@ -442,11 +446,11 @@ var construction = {
         const memoryPaths = [];
         const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
         let sCost;
-        if (Memory.construction && room.name in Memory.construction && Memory.construction[room.name].costMatrix) {
-            sCost = Memory.construction[room.name].costMatrix
-        }
         const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, room.controller.pos.x, room.controller.pos.y, 
             {swampCost:2}));
+        if (Memory.costMatrix && room.name in Memory.costMatrix) {
+            sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
+        }
         for (var i = 0; i < paths.length; i++) {
             const path = paths[i];
             const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
@@ -454,6 +458,7 @@ var construction = {
             if (ter != 'wall' && struct.length == 0) {
                 //room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
                 memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
+                sCost.set(path.x, path.y, 1);
             }
         }
         construction.buildMemoryConstruction(room.name, 'roadsfrommastertocontroller', memoryPaths);
@@ -501,8 +506,8 @@ var construction = {
 
         const currentRoom = Memory.highway[room.name];
         let sCost;
-        if (Memory.construction && room.name in Memory.construction && Memory.construction[room.name].costMatrix) {
-            sCost = Memory.construction[room.name].costMatrix
+        if (Memory.costMatrix && room.name in Memory.costMatrix) {
+            sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
         }
         for (const roomK in currentRoom) {
             const roomV = currentRoom[roomK];
@@ -511,6 +516,9 @@ var construction = {
                 // build road from master spawn to start
                 const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, start.x, start.y, 
                     {swampCost:2}));
+                if (!sCost) {
+                    sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
+                }
                 for (var i = 1; i < paths.length - 1; i++) {
                     const path = paths[i];
                     if (this.doesConstructionExistAndCantBuild(room, path, roadStructs))
@@ -518,6 +526,7 @@ var construction = {
                     const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
                     if (ter != 'wall') {
                         memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
+                        sCost.set(path.x, path.y, 1);
                     }
                 }
             }
@@ -625,11 +634,11 @@ var construction = {
             }
 
             // generate an exit if one doesn't exist in order for the rampart to be placed
-            if (Memory.highway[roomName][exits[eK]] == null) {
+            if (!(eK in Memory.highway[roomName].exits)) {
                 pathFinder.find_highway(room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), exits[eK]);
             }
             // we will discover where to place rampart based on the location of the path from spawn to exit
-            const start = Memory.highway[roomName][exits[eK]].start;
+            const start = Memory.highway[roomName].exits[eK];
             const pathToExit = Room.deserializePath(pathFinder.find_path_in_room({
                 pos: {x:room.memory.spawnMasterX, y:room.memory.spawnMasterY, roomName:roomName}, room:room
             },

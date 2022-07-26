@@ -35,11 +35,22 @@ var roleBuilder = {
     },
 
     findConstructSite: function(creep) {
-        return creep.pos.findClosestByRange(FIND_CONSTRUCTION_SITES, {
+        const cons = creep.room.find(FIND_CONSTRUCTION_SITES, {
             filter: (structure) => {
                 return structure.room.name == creep.room.name;
             }
         });
+        cons.sort(function(a, b) {
+            console.log(a.structureType)
+            if (a.structureType == b.structureType) {
+                return 0;
+            } else if (a.structureType == STRUCTURE_SPAWN)
+                return -1;
+            else if (b.structureType == STRUCTURE_SPAWN)
+                return 1;
+            return 0;
+          });
+          return cons[0];
     },
 
     run: function(creep) {

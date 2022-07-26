@@ -38,8 +38,16 @@ const military = {
         }
     },
 
+    /**
+     * Gets called from the creepconstruction build defenders method, in the future can return better numbers so it can determine 
+     * how many defenders would be good to send
+     */
     getDefendersNeeded: function(roomName) {
         const room = Game.rooms[roomName];
+
+        if (roomName == 'hostileStructs') {
+            console.log(hostileS)
+        }
         if (!room) {
             return;
         }
@@ -65,11 +73,21 @@ const military = {
         const hostileCreeps = room.find(FIND_HOSTILE_CREEPS, {
             filter: function(hCreep) {
                 const u = hCreep.owner.username;
+                if (u == 'Source Keeper')
+                    return false;
                 return Memory.allies[u] != null && Memory.allies[u].enemy;
             }
         });
+        const hostileStructs = room.find(FIND_HOSTILE_STRUCTURES, {
+            filter: function(hStruct) {
+                const u = hStruct.owner.username;
+                if (u == 'Source Keeper')
+                    return false;
+                return Memory.allies[u] != null && Memory.allies[u].enemy && hStruct.structureType != "keeperLair";
+            }
+        });
 
-        if (hostileCreeps.length == 0) {
+        if (hostileCreeps.length == 0 && hostileStructs == 0) {
             return null;
         }
 
@@ -82,6 +100,10 @@ const military = {
             totalHealth += c.hits;
             totalMelee += c.getActiveBodyparts(ATTACK);
             totalRange += c.getActiveBodyparts(RANGED_ATTACK);
+        }
+        for (const k in hostileStructs) {
+            const c = hostileStructs[k];
+            totalHealth += c.hits;
         }
         return [totalHealth, totalMelee, totalRange];
     },
@@ -103,8 +125,7 @@ const military = {
         if (!os.existsThread(name)) {
             const f = function() {
                 military.watchRooms(roomName);
-            } 
-            //os.newTimedThread(name, f, 10, 1, 30); 
+            }
             os.newThread(name, f, 10);
         }
     }

@@ -5,6 +5,8 @@ const pathFinder = require('pathFinder');
 const utilscreep = require('utilscreep');
 const utilsroom = require('utilsroom');
 
+let positions = [];
+
 var expansion = {
     /**
      * This function will look at the rooms currently owner and scan a box around them to be discovered by other expansion methods.
@@ -44,6 +46,7 @@ var expansion = {
         const con = room.controller;
         if (!con) {
             room.memory.type = common.roomMapping.UNOWNED;
+            room.memory.own = undefined;
         } else if (con.owner != null) {
             // room is claimed
             room.memory.type = common.roomMapping.OWNED;
@@ -58,6 +61,7 @@ var expansion = {
         } else {
             // controller isn't reserved or controller
             room.memory.type = common.roomMapping.UNOWNED;
+            room.memory.own = undefined;
         }
 
         // Check for hostile/other creeps
@@ -74,15 +78,16 @@ var expansion = {
         }
     },
 
-    isLayoutValid: function(room, array, xpos, ypos) {
+    isLayoutValid: function(room, array, xpos, ypos, done) {
         // first let's see if there is a 7x7 area
         for (let e = 1; e < 11; e++) {
-            if (array[ypos + e][xpos] < 7) {
+            done[`${ypos + e}-${xpos}`] = true;
+            if (array[ypos + e][xpos] < 11) {
                 return false;
             }
         }
-        const x = xpos + 5;
-        const y = ypos + 4;
+        const x = xpos + 5 + 5;
+        const y = ypos + 5 + 4;
         const currentPos = {
             pos: {x: x, y: y, roomName: room.name},
             room: room
@@ -95,7 +100,7 @@ var expansion = {
             const p = Room.deserializePath(pathFinder.find_path_in_room(currentPos, v.pos.x, v.pos.y));
             if (p.length == 0)
                 return false;
-        } 
+        }
 
         const controller = room.controller;
         const p = Room.deserializePath(pathFinder.find_path_in_room(currentPos, controller.pos.x, controller.pos.y));
@@ -191,14 +196,18 @@ var expansion = {
         let tempX = -1;
         let tempY = -1;
         let found = false;
-        for (let y = 5; y < 38; y++) {
+        const done = {};
+        for (let y = 5; y < 35; y++) {
             const yPosition = y - 5;
-            for (let x = 5; x <= 38; x++) {
+            for (let x = 5; x < 35; x++) {
                 const xP = x - 5;
                 const v = array[yPosition][xP];
+                //console.log(x, y)
                 if (v < 11) {
                     x += v;
-                } else if (expansion.isLayoutValid(room, array, xP, yPosition)) {
+                } else if (`${yPosition}-${xP}` in done) {
+                    continue;
+                } else if (expansion.isLayoutValid(room, array, xP, yPosition, done)) {
                     tempX = x;
                     tempY = y;
                     found = true;
@@ -218,7 +227,6 @@ var expansion = {
     },
 
     expandRooms: function() {
-        return
         if (Object.keys(Memory.flags.captureAuto).length > 0) {
             // check if we have claimed the room yet
             const k = Object.keys(Memory.flags.captureAuto)[0];
