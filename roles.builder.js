@@ -41,7 +41,6 @@ var roleBuilder = {
             }
         });
         cons.sort(function(a, b) {
-            console.log(a.structureType)
             if (a.structureType == b.structureType) {
                 return 0;
             } else if (a.structureType == STRUCTURE_SPAWN)

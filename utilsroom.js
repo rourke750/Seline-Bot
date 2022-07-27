@@ -106,7 +106,7 @@ var utilsroom = {
                     room = Game.rooms[roomName];
                     if (!room) {
                         return;
-                    }``
+                    }
                     construction.build_link_near_sources(source);
 
                     // set sources energy request to 0

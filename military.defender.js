@@ -1,11 +1,9 @@
 var utils = require('utils');
 
-const normal_creep = [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
-    TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, 
-    MOVE, MOVE, MOVE, 
-    MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK, MOVE, ATTACK,
-    MOVE,ATTACK,MOVE,ATTACK,MOVE,ATTACK,MOVE,ATTACK,MOVE,ATTACK]; // 
-//const normal_creep = [MOVE, MOVE]; // 300
+const normal_creep = [TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,
+    TOUGH,TOUGH,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,ATTACK,
+    ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,
+    ATTACK,ATTACK,ATTACK,ATTACK,ATTACK];
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)]
@@ -17,11 +15,12 @@ var militaryDefender = {
         let t = creep.pos.findClosestByPath(FIND_HOSTILE_CREEPS, {filter: function(creep) {
             return creep.owner in Memory.allies && Memory.allies[creep.owner].enemy && struct.pos.roomName == creep.memory.tRoom;
         }});
-        if (t == null)
+        if (t == null) {
             t = creep.pos.findClosestByPath(FIND_HOSTILE_STRUCTURES, {filter: function(struct) {
                 return struct.owner.username in Memory.allies && Memory.allies[struct.owner.username].enemy 
                 && struct.pos.roomName == creep.memory.tRoom && struct.structureType != "keeperLair";
             }});
+        }
         return t;
     },
     

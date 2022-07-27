@@ -155,7 +155,9 @@ const pathGenerator = {
         return [startPos, endPos];
     },
     
-    find_highway: function(pos, dstRoom) {
+    find_highway: function(pos, dstRoom, opts={}) {
+        opts.avoidHostile = opts.avoidHostile || false;
+
         // We want to see if a path to the dstRoom already exists if not we need to create it
         // We are just going to set it to the middle of the room
         // todo in the future come up with a better way to do this
@@ -168,7 +170,14 @@ const pathGenerator = {
         }
 
         paths = {};
-        const route = Game.map.findRoute(pos.roomName, dstRoom);
+        const route = Game.map.findRoute(pos.roomName, dstRoom, {
+            routeCallback(roomToName, roomFromName) {
+                if (opts.avoidHostile && roomToName in Memory.rooms && Memory.rooms[roomToName].eCP) {
+                    return Infinity;
+                }
+                return 1;
+            }
+        });
         let currentRoom = pos.roomName;
         let start;
         for (const k in route) {

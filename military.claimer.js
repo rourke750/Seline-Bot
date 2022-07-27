@@ -45,7 +45,7 @@ var militaryClaimer = {
         // let's check if the current room is owned by us if it is we need to go elseware
         if (creep.spawning) {
             return;
-        } 
+        }
         // todo delete below code and add if destLocNull
         if (creep.memory.destLoc == null) {
             // todo assign to a flag that doesn't have the members

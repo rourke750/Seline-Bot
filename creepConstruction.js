@@ -134,6 +134,7 @@ var creepConstruction = {
             if (spawn.spawning) {
                 continue;
             }
+            
             const newCreep = militaryDefender.create_creep(spawn, roomName);
             if (newCreep != null) { // if new creep created add to list
                 utilscreep.add_creep(newCreep);
@@ -158,7 +159,6 @@ var creepConstruction = {
                 continue;
             }
             creepConstruction.handle_build_no_spawns_defender_helper(spawnsMapping, 1, roomName);
-            break // only create
         }
     },
 

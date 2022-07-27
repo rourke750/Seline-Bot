@@ -44,10 +44,6 @@ const military = {
      */
     getDefendersNeeded: function(roomName) {
         const room = Game.rooms[roomName];
-
-        if (roomName == 'hostileStructs') {
-            console.log(hostileS)
-        }
         if (!room) {
             return;
         }

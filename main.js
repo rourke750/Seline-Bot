@@ -253,6 +253,7 @@ function exportStats() {
       gcl: {},
       rooms: {},
       cpu: {},
+      os: os.getStats(),
     };
   
     Memory.stats.time = Game.time;

@@ -32,6 +32,7 @@ var militaryClaimer = {
         if (creep.spawning) {
             return;
         }
+        creep.notifyWhenAttacked(false);
         
         // if we have found room and now need to go to a new room
         if (Memory.expansion.currentRoom && Memory.expansion.currentRoom != creep.memory.dstRoom) {
