@@ -227,6 +227,22 @@ var expansion = {
     },
 
     expandRooms: function() {
+        // go through rooms and see whats a good room to expand to, do 1 at a time and do it by closeness to a room we own
+        // first get rooms we own
+        let roomCount = 0;
+        const roomNames = [];
+        for (const k in Game.rooms) {
+            const room = Game.rooms[k];
+            if (room.controller && room.controller.my) {
+                roomCount++;
+                roomNames.push(k);
+            }
+        }
+        if (roomCount >= Game.gcl.level) {
+            Memory.flags.captureAuto = {};
+            return; // room count is max nothing to do
+        }
+
         if (Object.keys(Memory.flags.captureAuto).length > 0) {
             // check if we have claimed the room yet
             const k = Object.keys(Memory.flags.captureAuto)[0];
@@ -243,20 +259,6 @@ var expansion = {
                 flags[k].remove();
             }
         }
-
-        // go through rooms and see whats a good room to expand to, do 1 at a time and do it by closeness to a room we own
-        // first get rooms we own
-        let roomCount = 0;
-        const roomNames = [];
-        for (const k in Game.rooms) {
-            const room = Game.rooms[k];
-            if (room.controller && room.controller.my) {
-                roomCount++;
-                roomNames.push(k);
-            }
-        }
-        if (roomCount >= Game.gcl.level) 
-            return; // room count is max nothing to do
 
         // now go through rooms in memory and add to an array of all rooms that look okay to expand to
         const expandRooms = [];

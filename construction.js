@@ -539,6 +539,7 @@ var construction = {
         if (roomName != "W3N7") {
             return;
         }
+        return;
 
         if (construction.doesMemoryExistConstructon(roomName, 'wallsAndRamparts')) {
             return;
@@ -764,6 +765,12 @@ var construction = {
             return;
         }
         const pathsArray = Memory.construction[roomName].paths;
+        const pathsKeys = Object.keys(pathsArray);
+        pathsKeys.sort(function(a, b) {
+            const aa = common.buildConstructionFromMemory[a] || 10;
+            const bb = common.buildConstructionFromMemory[b] || 10;
+            return aa - bb;
+        });
         let count = room.find(FIND_CONSTRUCTION_SITES).length;
         
         for (const pathKey in pathsArray) {

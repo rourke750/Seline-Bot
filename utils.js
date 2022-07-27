@@ -109,6 +109,8 @@ var utils = {
             return false;
         }
         const roomMemory = creep.room.memory;
+        if (!roomMemory.spawnMasterX || !roomMemory.spawnMasterY)
+            return false;
         const containerPos = creep.room.getPositionAt(roomMemory.spawnMasterX, roomMemory.spawnMasterY + 1);
         const v = creep.room.lookForAt(LOOK_STRUCTURES, containerPos);
         for (const s in v) {
@@ -131,12 +133,14 @@ var utils = {
                         filter: (source) => {
                             // set up code for smart harvester
                             if (creep.memory.role == 'smartHarvester') {
+                                // if we are a smartHarvester we only care that the smartCreep field is empty
                                 return source.room.memory.sources[source.id].smartCreep == null;
                             }
                             return source.energy > 0 && 
                             source.room.memory.sources[source.id].totalEnergyWant + energyRequirement < source.energy &&
                             Object.keys(source.room.memory.sources[source.id].creeps).length < source.room.memory.sources[source.id].maxCreeps.maxCount
-                            && source.room.memory.sources[source.id].smartCreep == null;
+                            && source.room.memory.sources[source.id].smartCreep == null
+                            && ((source.room.controller && (source.room.controller.my || source.room.controller.owner == null)) || !source.room.controller);
                         }
                 });
         if (sources.length == 0) {

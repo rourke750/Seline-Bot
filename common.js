@@ -17,10 +17,17 @@ const ROOM_TYPE = {
     OWNED: 3
 }
 
+const CONSTRUCTION_PRIORITY = {
+    'spawns': 1,
+    'extensions': 2,
+}
+
 const common = {
     roomMapping: ROOM_TYPE,
     maxConstructionsPerRoom: 5,
     username: 'rourke750',
+
+    constructionPriority: CONSTRUCTION_PRIORITY,
 
     creepMapping: {
         'harvester' : roleHarvester,
