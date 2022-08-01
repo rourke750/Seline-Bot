@@ -136,11 +136,15 @@ var utils = {
                                 // if we are a smartHarvester we only care that the smartCreep field is empty
                                 return source.room.memory.sources[source.id].smartCreep == null;
                             }
+                            // (if there is a controller and (i own it or the owner is null)) or no controller
+                            const ownerIAm = !source.room.controller || source.room.controller.my || source.room.controller.owner == null;
+                            const reservationMine = !source.room.controller || source.room.controller.reservation == null 
+                                || source.room.controller.reservation.username == 'rourke750';
                             return source.energy > 0 && 
                             source.room.memory.sources[source.id].totalEnergyWant + energyRequirement < source.energy &&
                             Object.keys(source.room.memory.sources[source.id].creeps).length < source.room.memory.sources[source.id].maxCreeps.maxCount
                             && source.room.memory.sources[source.id].smartCreep == null
-                            && ((source.room.controller && (source.room.controller.my || source.room.controller.owner == null)) || !source.room.controller);
+                            && ownerIAm && reservationMine;
                         }
                 });
         if (sources.length == 0) {
@@ -150,8 +154,9 @@ var utils = {
             const exits = Game.map.describeExits(creep.room.name);
             for (const eK in exits) {
                 const currentRoomName = exits[eK];
-                if (Memory.flags.energy != null && Memory.flags.energy[currentRoomName] != null && creep.memory.home_room != null && 
-                    Memory.rooms[currentRoomName] != null) {
+                //Memory.flags.energy != null && Memory.flags.energy[currentRoomName] != null && 
+                if (creep.memory.home_room != null && Memory.rooms[currentRoomName] != null 
+                    && Memory.rooms[currentRoomName].type != 1 && Memory.rooms[currentRoomName].type != 3) {
                     //return false
                     // there is a flag set let's go get that energy
                     const otherRoomSources = Memory.rooms[currentRoomName].sources;

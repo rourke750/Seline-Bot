@@ -40,10 +40,11 @@ var roleBuilder = {
                 return structure.room.name == creep.room.name;
             }
         });
+        // handle prioritizing building the spawn
         cons.sort(function(a, b) {
-            if (a.structureType == b.structureType) {
+            if (a.structureType == b.structureType)
                 return 0;
-            } else if (a.structureType == STRUCTURE_SPAWN)
+            else if (a.structureType == STRUCTURE_SPAWN)
                 return -1;
             else if (b.structureType == STRUCTURE_SPAWN)
                 return 1;

@@ -14,6 +14,8 @@ containerStructs[STRUCTURE_CONTAINER] = true;
 const wallRampartStructs = {};
 wallRampartStructs[STRUCTURE_RAMPART] = true;
 wallRampartStructs[STRUCTURE_WALL] = true;
+
+const LAST_RAN = {};
  
 var construction = {
 
@@ -232,19 +234,11 @@ var construction = {
         /* goal of this method is to build a link that will match up with with a source and is close to the spawn, 
         then haulers can carry energy to where its needed
         */
-        /*
-        for (const f in Game.flags) {
-            if (Game.flags[f].pos.roomName == 'W3N7') {
-                Game.flags[f].remove()
-            }
-        }
-        */
-        //pos.createFlag();
-        if (!source.room.controller) {
+        if (!source.room.controller || !source.room.controller.my || (Game.time + 40) % 1000 != 0) {
             return;
         }
                 
-        if (!((Game.time + 40) % 1000 == 0 && source.room.controller.level >= 6)) {
+        if (source.room.controller.level < 6) {
             return
         }
         
@@ -767,8 +761,8 @@ var construction = {
         const pathsArray = Memory.construction[roomName].paths;
         const pathsKeys = Object.keys(pathsArray);
         pathsKeys.sort(function(a, b) {
-            const aa = common.buildConstructionFromMemory[a] || 10;
-            const bb = common.buildConstructionFromMemory[b] || 10;
+            const aa = common.constructionPriority[a] || 10;
+            const bb = common.constructionPriority[b] || 10;
             return aa - bb;
         });
         let count = room.find(FIND_CONSTRUCTION_SITES).length;
@@ -810,7 +804,7 @@ var construction = {
                 construction.buildRoadFromMasterSpawnToSources(room);
                 construction.buildRoadsFromMasterSpawnToController(room);
             } 
-            os.newTimedThread(name, f, 10, 1, 20); // spawn a new timed thread that runs every 20 ticks
+            os.newTimedThread(name, f, 10, 1, 100); // spawn a new timed thread that runs every 20 ticks
         }
 
         name = 'construction-' + room.name + '-remove_old_roads';

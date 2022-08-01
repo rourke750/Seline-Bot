@@ -21,6 +21,9 @@ var militaryDefender = {
                 && struct.pos.roomName == creep.memory.tRoom && struct.structureType != "keeperLair";
             }});
         }
+        if (!t) {
+            t = {pos: {x: 22, y: 22, roomName: creep.memory.tRoom}};
+        }
         return t;
     },
     
@@ -28,6 +31,7 @@ var militaryDefender = {
         if (creep.spawning) {
             return;
         }
+        creep.notifyWhenAttacked(false);
         // first lets see if we have a destination room we need to go to and if we are not in it then move there
         if (creep.current_path == null && creep.pos.roomName != creep.memory.tRoom) {
             creep.memory.destLoc = {x: 22, y: 22, roomName: creep.memory.tRoom};
