@@ -90,6 +90,9 @@ function handleFlags() {
     if (m.capture == null) {
         m.capture = {};
     }
+    if (m.blacklist == null) {
+        m.blacklist = {};
+    }
     if (m.captureAuto == null) { // automatic flag
         m.captureAuto = {};
     }
@@ -102,6 +105,8 @@ function handleFlags() {
             Memory.flags.reserve[v.pos.roomName] = {};
         } else if (!(v.pos.roomName in Memory.flags.capture) && k.startsWith('Capture')) {
             Memory.flags.capture[v.pos.roomName] = {};
+        } else if (!(v.pos.roomName in Memory.flags.blacklist) && k.startsWith('Blacklist')) {
+            Memory.flags.blacklist[v.pos.roomName] = {};
         }
     }
 
@@ -131,6 +136,8 @@ function handleFlags() {
             n = 'reserve';
         } else if (flag.name.startsWith('Capture')) {
             n = 'capture';
+        } else if (flag.name.startsWith('Blacklist')) {
+            n = 'blacklist';
         }
         roomFlags[flag.pos.roomName][n] = true;
     }

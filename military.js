@@ -48,6 +48,10 @@ const military = {
             return;
         }
 
+        if (roomName in Memory.flags.blacklist) {
+            return;
+        }
+
         if (!Memory.defenders) {
             Memory.defenders = {};
         }

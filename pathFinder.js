@@ -116,10 +116,12 @@ const pathGenerator = {
             {
                 plainCost: plainCost,
                 swampCost: swampCostConst,
-                maxOps: 2000,
+                maxOps: 4000,
                 roomCallback: function(roomName) {
-                    if (roomName == oRoom)
+                    // check if roomname equals a room we maybe just came from and that its not the room we are going to
+                    if (roomName != dstRoom && roomName != pos.roomName) {
                         return false;
+                    }
                     if (roomName in Memory.costMatrix)
                         return PathFinder.CostMatrix.deserialize(Memory.costMatrix[roomName]);
                     else if (pathGenerator.build_cost_matrix(roomName)) {
@@ -174,6 +176,8 @@ const pathGenerator = {
             routeCallback(roomToName, roomFromName) {
                 if (opts.avoidHostile && roomToName in Memory.rooms && Memory.rooms[roomToName].eCP) {
                     return Infinity;
+                } else if (roomToName in Memory.flags.blacklist) {
+                    return Infinity;
                 }
                 return 1;
             }
@@ -207,8 +211,13 @@ const pathGenerator = {
                     return; // exit dont want the shit path
                 }
                 const r = this.getStartAndExit(start, dir.room, v);
-                const s = r[0]; // last position before next room
-                const e = r[1]; // first position in new room
+                let s = r[0]; // last position before next room
+                let e = r[1]; // first position in new room
+                if (s == e) { // we are standing on the border
+                    v.path.unshift(start)
+                    e = 1;
+                    console.log('herm is this the problem in pathfinder s:', s, ' e: ', e, start, dir.room, JSON.stringify(v))
+                }
 
                 exits[dir.exit] = {x: v.path[s].x, y: v.path[s].y};
                 //console.log(s, e, JSON.stringify(v.path))
@@ -261,6 +270,10 @@ const pathGenerator = {
             }
             currentRoom = dir.room;
             start = nextStart;
+        }
+        if (route == -2) {
+            console.log('Error getting path from ' + pos.roomName + ' to ' + dstRoom);
+            return;
         }
         return [paths, Memory.highway[pos.roomName].exits[route[0].exit]];
     },
@@ -411,8 +424,32 @@ const pathGenerator = {
     },
 
     test: function() {
-        const pos = {pos: {x:8, y: 49, roomName:'W2N8'}, room: Game.rooms['W2N8'], name:'test'}
-        console.log(JSON.stringify(Room.deserializePath(this.find_path_in_room(pos, 28, 43))))
+        const opts = {};
+        opts.avoidHostile = false;
+        const route = Game.map.findRoute('W1N9', 'W1N8', {
+            routeCallback(roomToName, roomFromName) {
+                if (opts.avoidHostile && roomToName in Memory.rooms && Memory.rooms[roomToName].eCP) {
+                    return Infinity;
+                } else if (roomToName in Memory.flags.blacklist) {
+                    return Infinity;
+                }
+                return 1;
+            }
+        });
+        return JSON.stringify(route)
+    },
+
+    testHighWay: function() {
+        const rooms = Memory.highway;
+        for (const roomName in rooms) {
+            const exits = rooms[roomName].exits;
+            for (const e in exits) {
+                const pos = exits[e];
+                if (this.getExitBasedOnPos(pos) != e) {
+                    console.log(roomName + ' failed')
+                }
+            }
+        }
         
     },
 

@@ -134,7 +134,7 @@ var utils = {
                             // set up code for smart harvester
                             if (creep.memory.role == 'smartHarvester') {
                                 // if we are a smartHarvester we only care that the smartCreep field is empty
-                                return source.room.memory.sources[source.id].smartCreep == null;
+                                return source.room.memory.sources[source.id].smartCreep == null && source.room.memory.sources[source.id].finished;
                             }
                             // (if there is a controller and (i own it or the owner is null)) or no controller
                             const ownerIAm = !source.room.controller || source.room.controller.my || source.room.controller.owner == null;
@@ -156,12 +156,19 @@ var utils = {
                 const currentRoomName = exits[eK];
                 //Memory.flags.energy != null && Memory.flags.energy[currentRoomName] != null && 
                 if (creep.memory.home_room != null && Memory.rooms[currentRoomName] != null 
-                    && Memory.rooms[currentRoomName].type != 1 && Memory.rooms[currentRoomName].type != 3) {
+                    && Memory.rooms[currentRoomName].type != 1 && Memory.rooms[currentRoomName].type != 3 
+                    && !Memory.rooms[currentRoomName].eCP) {
                     //return false
                     // there is a flag set let's go get that energy
                     const otherRoomSources = Memory.rooms[currentRoomName].sources;
                     for (const oK in otherRoomSources) {
                         const oV = otherRoomSources[oK];
+
+                        // let's check if it is being smart harvested
+                        if (oV.smartCreep != null) {
+                            // smart harvester continue
+                            continue;
+                        }
                         
                         const aSource = Game.getObjectById(oK) // let's see if we can get the source, if we cant it means we dont have vision
                         let hasEnergy = true;
@@ -170,7 +177,7 @@ var utils = {
                             // we have the source we can filter better
                             hasEnergy = aSource.energy > 0;
                             meetsEnergy = oV.totalEnergyWant + energyRequirement < aSource.energy;
-                        } 
+                        }
                         
                         if (hasEnergy && meetsEnergy && Object.keys(oV.creeps).length < oV.maxCreeps.maxCount) {
                             // we meet all the criteria lets send them off
@@ -282,6 +289,7 @@ var utils = {
         }
 
         // now check dest loc if we are smart harvesting it
+        // if we are smart harvesting then we must pick a new source
         const tempMemSource = Memory.rooms[position.roomName].sources[destId];
         if (tempMemSource != null && tempMemSource.smartCreep != null && tempMemSource.smartCreep != creep.name) {
             this.cleanup_move_to(creep);
@@ -347,6 +355,9 @@ var utils = {
             console.log('source harvest errro ' + source.pos.x + ' ' + source.pos.y + ' ' + source.pos.roomName)
         } else if (hErr == ERR_NO_BODYPART) {
             //console.log('harvest source error no body parts??? ' + JSON.stringify(creep.body));
+        } else if (hErr == -1) {
+            this.cleanup_move_to(creep);
+            console.log('harvest source error not owner ' + hErr + ' ' +creep.name)
         } else if (hErr != 0) {
             console.log('harvest source error ' + hErr + ' ' +creep.name)
         }
@@ -360,7 +371,7 @@ var utils = {
         }
         const obj = Game.getObjectById(creep.memory.destId);
         if (obj == null) {
-            console.log(creep.name + ' ' + creep.pos + ' ' + creep.memory.destId)
+            console.log('utils move to helper' + creep.name + ' ' + creep.pos + ' ' + creep.memory.destId)
             return null;
         }
         return [obj.pos.x, obj.pos.y, obj.pos.roomName];
@@ -371,6 +382,9 @@ var utils = {
         creep.memory.dstRoom = dstRoom
         // find highway traversal
         const pFind = pathFinder.find_highway(creep.pos, dstRoom);
+        if (pFind == null) {
+            return;
+        }
         const highWayPath = pFind[0]
         if (highWayPath == null) {
             return;
@@ -395,6 +409,10 @@ var utils = {
     move_to: function(creep, newRoomFunc=null, avoidCreepIfStuck=true) {
         // hanldes destinations even in other rooms
         const v = this.move_to_helper(creep);
+        if (v == null) {
+            console.log('utils creep ' + creep.name + ' has null destination, quitting');
+            return;
+        }
         if (creep.memory.current_path == null || creep.memory.current_path == undefined) {
             
             if (v[2] != creep.pos.roomName) {
@@ -498,6 +516,16 @@ var utils = {
         creep.memory.destLoc = null;
         creep.memory.dstRoom = null;
         creep.memory.dstRoomPath = null;
+        creep.memory.maxCreepsIndexPosition = undefined;
+    },
+
+    followStack: function(msg) {
+        try {
+            // Code throwing an exception
+            throw new Error();
+        } catch(e) {
+            console.log(msg, e.stack);
+        }
     }
 }
 

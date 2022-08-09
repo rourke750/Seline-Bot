@@ -118,7 +118,9 @@ var expansion = {
             if (roomName in Game.rooms) // we already have vision continue
                 continue;
             const v = Memory.rooms[roomName];
-            if (!v.lastScouted) { // never been scouted
+            if (roomName in Memory.flags.blacklist) { // dont want to scout a blacklisted room
+                continue;
+            } else if (!v.lastScouted) { // never been scouted
                 earliestRoomName = roomName;
                 break;
             } else if (earliestScouted == -1 || v.lastScouted < earliestScouted) {

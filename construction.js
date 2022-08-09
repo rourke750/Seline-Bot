@@ -132,7 +132,7 @@ var construction = {
         // build defense towers
 
         // build storage container
-        if (!this.doesConstructionExistAndCantBuild(room, [room.memory.spawnMasterX, room.memory.spawnMasterY+1], mergedFoundStructs)) {
+        if (!this.doesConstructionExistAndCantBuild(room, [room.memory.spawnMasterX, room.memory.spawnMasterY+1], containerStructs)) {
             paths.push([room.memory.spawnMasterX, room.memory.spawnMasterY+1, STRUCTURE_CONTAINER]);
         }
 
@@ -189,9 +189,18 @@ var construction = {
         if ((room.memory.spawnMaster == null && room.memory.spawnMasterX != null) || 
             (room.memory.spawnMaster != null && !Game.spawns[room.memory.spawnMaster])) {
             // we are missing the master spawn rebuild it
-            const n = `${room.name}-1`;
+            let n = `${room.name}-1`;
+            // we are checking if we maybe got the name wrong and will update it if need be
+            const ts = room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY).look();
+            for (const tK in ts) {
+                const t = ts[tK];
+                if (t.type == 'structure' && t.structure.structureType == STRUCTURE_SPAWN) {
+                    n = t.structure.name;
+                    break; // dont need to loop any more
+                }
+            }
             // room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY).createConstructionSite(STRUCTURE_SPAWN, n);
-            paths.push([room.memory.spawnMasterX, room.memory.spawnMasterY, STRUCTURE_SPAWN]);
+            paths.push([room.memory.spawnMasterX, room.memory.spawnMasterY, STRUCTURE_SPAWN, n]);
             room.memory.spawnMaster = n;
         }
         const m = Game.spawns[room.memory.spawnMaster];
@@ -205,14 +214,14 @@ var construction = {
         if (!this.find_spawns_at_pos(room, secondLocation)) { // didnt find a spawn lets build it
             const n = `${room.name}-2`;
             //secondLocation.createConstructionSite(STRUCTURE_SPAWN, n);
-            paths.push([m.pos.x-1, m.pos.y+1, STRUCTURE_SPAWN]);
+            paths.push([m.pos.x-1, m.pos.y+1, STRUCTURE_SPAWN, n]);
         }
         // check for bottom right spawn if we can build it
         secondLocation = room.getPositionAt(m.pos.x+1, m.pos.y+1);
         if (!this.find_spawns_at_pos(room, secondLocation)) { // didnt find a spawn lets build it
             const n = `${room.name}-3`;
             //secondLocation.createConstructionSite(STRUCTURE_SPAWN, n);
-            paths.push([m.pos.x+1, m.pos.y+1, STRUCTURE_SPAWN]);
+            paths.push([m.pos.x+1, m.pos.y+1, STRUCTURE_SPAWN, n]);
         }
         construction.buildMemoryConstruction(room.name, 'spawns', paths);
     },
@@ -238,7 +247,7 @@ var construction = {
             return;
         }
                 
-        if (source.room.controller.level < 6) {
+        if (source.room.controller.level < 5) {
             return
         }
         
@@ -503,9 +512,8 @@ var construction = {
         if (Memory.costMatrix && room.name in Memory.costMatrix) {
             sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
         }
-        for (const roomK in currentRoom) {
-            const roomV = currentRoom[roomK];
-            const start = roomV.start;
+        for (const roomK in currentRoom.exits) {
+            const start = currentRoom.exits[roomK];
             if (start != null) {
                 // build road from master spawn to start
                 const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, start.x, start.y, 
@@ -767,7 +775,8 @@ var construction = {
         });
         let count = room.find(FIND_CONSTRUCTION_SITES).length;
         
-        for (const pathKey in pathsArray) {
+        for (const pK in pathsKeys) {
+            const pathKey = pathsKeys[pK];
             if (count >= common.maxConstructionsPerRoom) // break if we have constructed more than listed
                 break;
             const paths = pathsArray[pathKey];
@@ -776,7 +785,10 @@ var construction = {
                     break;
                 const path = paths[pKey];
                 paths.pop();
-                room.getPositionAt(path[0], path[1]).createConstructionSite(path[2]);
+                let name = null;
+                if (path[2] == STRUCTURE_SPAWN)
+                    name = path[3];
+                room.getPositionAt(path[0], path[1]).createConstructionSite(path[2], name);
                 count++;
             }
             if (paths.length == 0) {

@@ -53,8 +53,11 @@ var creepConstruction = {
                 const roomRepairers = utilscreep.get_role_home_filtered_creeps(roomName, 'repairer');
                 const claimers = utilscreep.get_filtered_creeps('claimer');
                 if (roomUpgraders.length == 0) {
-                    roleUpgrader.create_creep(spawn);
-                    return;
+                    const newCreep = roleUpgrader.create_creep(spawn);
+                    if (newCreep != null) { // if new creep created add to list
+                        utilscreep.add_creep(newCreep);
+                        continue;
+                    }
                 }
                 // Now we want to see what percent of everything else is available and spawn accordingly
                 const upgraderPer = utils.notZero((roomUpgraders.length / roleUpgrader.get_harvest_count(spawn.room)));
@@ -106,7 +109,7 @@ var creepConstruction = {
             text,
             Memory.rooms[roomName].spawnMasterX, 
             Memory.rooms[roomName].spawnMasterY + 7, 
-            {align: 'center', opacity: 0.8});
+            {align: 'center', opacity: 0.8}); 
     },
 
     handle_build_no_spawns_scout(spawnsMapping) {
