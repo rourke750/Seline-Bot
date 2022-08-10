@@ -1,4 +1,5 @@
 var utils = require('utils');
+const construction = require('construction');
 
 const normal_creep = [WORK, CARRY, MOVE];
 const big_creep = [WORK, WORK, WORK, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE];
@@ -9,6 +10,8 @@ const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)],
     [1, big_creep, utils.get_creep_cost(big_creep)]
 ]
+
+const lastUpdated = {}; // mapping of room name to structures
 
 var roleRepairer = {
     
@@ -38,14 +41,60 @@ var roleRepairer = {
     },
 
     find_repairs: function(creep) {
-        return creep.pos.findClosestByRange(FIND_STRUCTURES, {
-            filter: (structure) => {
-                if (structure.structureType == STRUCTURE_WALL || structure.structureType == STRUCTURE_RAMPART){
-                    return structure.hits < 3000;
+        // add it to heap if its not there
+        if (!(creep.memory.home_room in lastUpdated)) {
+            lastUpdated[creep.memory.home_room] = {time: 0, structs: []};
+        }
+
+        if (lastUpdated[creep.memory.home_room].time + 50 < Game.time) {
+            // time to reinitialize structs
+            const struts = creep.room.find(FIND_STRUCTURES, {
+                filter: function(struct) {
+                    return struct.structureType != STRUCTURE_ROAD;
                 }
-                return structure.hits < structure.hitsMax && structure.room.name == creep.room.name;
+            });
+
+            // get roads
+            const objs = construction.getRoadMappings(creep.memory.home_room);
+            
+            // merge structures into obj array
+            for (const k in struts) {
+                const v = struts[k];
+                objs.push(v.id);
             }
-        })
+
+            lastUpdated[creep.memory.home_room].structs = objs;
+            lastUpdated[creep.memory.home_room].time = Game.time;
+        }
+
+        let closestObj = null;
+        let closestRange = 9999999;
+        for (const k in lastUpdated[creep.memory.home_room].structs) {
+            const id = lastUpdated[creep.memory.home_room].structs[k];
+            const v = Game.getObjectById(id);
+
+            // check the structure if it needs repairs
+            let needsRepairs = false;
+            if (v.structureType == STRUCTURE_WALL || v.structureType == STRUCTURE_RAMPART) {
+                needsRepairs = v.hits < 3000;
+            } else {
+                needsRepairs = v.hits < v.hitsMax;
+            }
+
+            if (!needsRepairs) {
+                // doesn't need repairs next structure
+                continue;
+            }
+
+            // it does need repairs is it close
+            const range = v.pos.getRangeTo(creep);
+            if (range < closestRange) {
+                closestObj = v;
+                closestRange = range; 
+            }
+        }
+
+        return closestObj;
     },
 
     /** @param {Creep} creep **/

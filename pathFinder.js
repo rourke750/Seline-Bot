@@ -424,19 +424,12 @@ const pathGenerator = {
     },
 
     test: function() {
-        const opts = {};
-        opts.avoidHostile = false;
-        const route = Game.map.findRoute('W1N9', 'W1N8', {
-            routeCallback(roomToName, roomFromName) {
-                if (opts.avoidHostile && roomToName in Memory.rooms && Memory.rooms[roomToName].eCP) {
-                    return Infinity;
-                } else if (roomToName in Memory.flags.blacklist) {
-                    return Infinity;
-                }
-                return 1;
-            }
-        });
-        return JSON.stringify(route)
+        const s = Game.cpu.getUsed();
+        Game.rooms['W7N7'].getPositionAt(12, 24).lookFor(LOOK_STRUCTURES)//.createConstructionSite(STRUCTURE_ROAD)
+        for (let x = 0; x < 10; x++) {
+            continue
+        }
+        return Game.cpu.getUsed() - s;
     },
 
     testHighWay: function() {

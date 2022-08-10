@@ -100,9 +100,10 @@ var utilsroom = {
         const roomName = room.name;
         for (var id in sources) {
             const name = 'handleSources-' + room.name + '-' + id;
-            const source = sources[id];
+            const sourceId = sources[id].id;
             if (!os.existsThread(name)) {
                 const f = function() {
+                    const source = Game.getObjectById(sourceId);
                     room = Game.rooms[roomName];
                     if (!room) {
                         return;

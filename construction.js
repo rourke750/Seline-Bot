@@ -15,9 +15,37 @@ const wallRampartStructs = {};
 wallRampartStructs[STRUCTURE_RAMPART] = true;
 wallRampartStructs[STRUCTURE_WALL] = true;
 
-const LAST_RAN = {};
+const roadMappings = {};
  
 var construction = {
+
+    getRoadMappings: function(roomName) {
+        const roads = [];
+        for (const k in roadMappings[roomName]) {
+            roads.push(...roadMappings[roomName][k]);
+        }
+        return roads;
+    },
+
+    saveRoadsToHeap: function(roomName, name, positions) {
+        if (!(roomName in roadMappings)) {
+            roadMappings[roomName] = {};
+        }
+        
+        const room = Game.rooms[roomName];
+
+        roadMappings[roomName][name] = [];
+        for (const k in positions) {
+            const v = positions[k];
+            const s = room.lookForAt(LOOK_STRUCTURES, v[0], v[1]);
+            for (const sK in s) {
+                const struct = s[sK];
+                if (struct.structureType == STRUCTURE_ROAD) {
+                    roadMappings[roomName][name].push(struct.id);
+                }
+            }
+        }
+    },
 
     build_missing_spawn: function(roomName) {
         const room = Game.rooms[roomName];
@@ -57,7 +85,7 @@ var construction = {
             const v = struct[s];
             if (v.structureType in obsticalD || v.structureType in additionalStructs) {
                 found = true;
-                continue;
+                break;
             }
         }
         return (c.length > 0 || found)
@@ -75,6 +103,7 @@ var construction = {
         }
 
         const paths = [];
+        const heapPaths = [];
 
         const mergedFoundStructs = Object.assign({}, roadStructs, containerStructs);
 
@@ -103,8 +132,10 @@ var construction = {
             let positions = utils.buildLineDirection(room.memory.spawnMasterX, room.memory.spawnMasterY+1, i, 4)
             for (const ii in positions) {
                 const v = positions[ii];
-                if (this.doesConstructionExistAndCantBuild(room, v, roadStructs)) // if we are already constructing we do not want to call this method
+                if (this.doesConstructionExistAndCantBuild(room, v, roadStructs)) { // if we are already constructing we do not want to call this method
+                    heapPaths.push([v[0], v[1]]);
                     continue;
+                }
                 paths.push([v[0], v[1], STRUCTURE_ROAD]);
                 //room.getPositionAt(v[0], v[1]).createConstructionSite(STRUCTURE_ROAD);
             }
@@ -141,6 +172,7 @@ var construction = {
             paths.push([room.memory.spawnMasterX+1, room.memory.spawnMasterY+5, STRUCTURE_STORAGE]);
         }
 
+        construction.saveRoadsToHeap(room.name, 'auxnearspawns', heapPaths)
         // send off to memory
         construction.buildMemoryConstruction(room.name, 'auxnearspawns', paths);
     },
@@ -276,7 +308,7 @@ var construction = {
         
         //todo change the above logic where only if it is found does the below code not run
         
-        const spawns = source.pos.findClosestByPath(FIND_MY_STRUCTURES, {
+        const spawns = source.pos.findClosestByRange(FIND_MY_STRUCTURES, {
                         filter: (structure) => {
                             return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) && 
                             structure.room.name == source.room.name;
@@ -299,8 +331,34 @@ var construction = {
             pos = new RoomPosition(mem.container_x, mem.container_y, source.room.name);
         }
         
+        // this is fine to do because above we check if a link exists already
+        
         const conErr = pos.createConstructionSite(STRUCTURE_LINK)
-        if (conErr != 0) {
+        if (conErr == ERR_INVALID_TARGET) {
+            // we need to find a new position to place it
+            // let's take the first position for the source since smart harvester will usually go there
+            const creepPos = Memory.rooms[source.room.name].sources[source.id].maxCreeps.positions[0];
+            // try positions around it
+            // get area around creep pos
+            let found = false;
+            for (let y = creepPos[1]-1; y <= creepPos[1]+1; y++) {
+                for (let x = creepPos[0]-1; x <= creepPos[0]+1; x++) {
+                    if (y == creepPos[1] && x == creepPos[0]) {
+                        continue;
+                    }
+                    // try place struct, if -7 continue
+                    if (source.room.getPositionAt(x, y).createConstructionSite(STRUCTURE_LINK) == 0) {
+                        // success
+                        found = true;
+                        mem.container_x = x;
+                        mem.container_y = y;
+                        break
+                    }
+                }
+                if (found)
+                    break;
+            }
+        } else if (conErr != 0) {
             console.log('failed to create construction site for STRUCTURE_LINK ' + conErr);
             // it shouldnt create one without x, y being set as well.
             return;
@@ -409,6 +467,7 @@ var construction = {
         }
 
         const memoryPaths = [];
+        const heapPaths = [];
 
         const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
         const sources = room.find(FIND_SOURCES);
@@ -425,15 +484,18 @@ var construction = {
             }
             for (var i = 0; i < paths.length; i++) {
                 const path = paths[i];
-                const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
-                const struct = room.lookForAt(LOOK_STRUCTURES, path.x, path.y);
-                if (ter != 'wall' && struct.length == 0) {
-                    //room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
-                    memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
-                    sCost.set(path.x, path.y, 1);
+
+                if (this.doesConstructionExistAndCantBuild(room, path, roadStructs)) {
+                    heapPaths.push([path.x, path.y]);
+                    continue;
                 }
+
+                memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
+                sCost.set(path.x, path.y, 1);
             }
         }
+
+        construction.saveRoadsToHeap(room.name, 'roadsfrommastertosources', heapPaths)
         construction.buildMemoryConstruction(room.name, 'roadsfrommastertosources', memoryPaths);
     },
 
@@ -447,6 +509,8 @@ var construction = {
         }
 
         const memoryPaths = [];
+        const heapPaths = [];
+
         const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
         let sCost;
         const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, room.controller.pos.x, room.controller.pos.y, 
@@ -456,14 +520,15 @@ var construction = {
         }
         for (var i = 0; i < paths.length; i++) {
             const path = paths[i];
-            const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
-            const struct = room.lookForAt(LOOK_STRUCTURES, path.x, path.y);
-            if (ter != 'wall' && struct.length == 0) {
-                //room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
-                memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
-                sCost.set(path.x, path.y, 1);
+            if (this.doesConstructionExistAndCantBuild(room, path, roadStructs)) {
+                heapPaths.push([path.x, path.y]);
+                continue;
             }
+            memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
+            sCost.set(path.x, path.y, 1);
         }
+        
+        construction.saveRoadsToHeap(room.name, 'roadsfrommastertocontroller', heapPaths)
         construction.buildMemoryConstruction(room.name, 'roadsfrommastertocontroller', memoryPaths);
     },
     
@@ -504,6 +569,7 @@ var construction = {
         }
 
         const memoryPaths = [];
+        const heapPaths = [];
 
         const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
 
@@ -523,17 +589,18 @@ var construction = {
                 }
                 for (var i = 1; i < paths.length - 1; i++) {
                     const path = paths[i];
-                    if (this.doesConstructionExistAndCantBuild(room, path, roadStructs))
+
+                    if (this.doesConstructionExistAndCantBuild(room, path, roadStructs)) {
+                        heapPaths.push([path.x, path.y]);
                         continue;
-                    const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
-                    if (ter != 'wall') {
-                        memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
-                        sCost.set(path.x, path.y, 1);
                     }
+                    memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
+                    sCost.set(path.x, path.y, 1);
                 }
             }
         }
         
+        construction.saveRoadsToHeap(room.name, 'roadsfrommastertoexits', heapPaths)
         construction.buildMemoryConstruction(room.name, 'roadsfrommastertoexits', memoryPaths);
     },
 
