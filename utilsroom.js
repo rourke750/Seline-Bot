@@ -8,7 +8,35 @@ const pathFinder = require('pathFinder');
 
 const military = require('military');
 
+let closestRoomMappingSpawn = {};
+let closestRoomMappingTick = Game.time;
+
 var utilsroom = {
+
+    getClosestRoomFromRoom(spawnsMapping, roomName) {
+        // first if game tick isnt the same than clear it
+        if (Game.time != closestRoomMappingTick) {
+            closestRoomMappingSpawn = {};
+            closestRoomMappingTick = Game.time;
+        }
+
+        // check if the mapping exists
+        if (roomName in closestRoomMappingSpawn) {
+            return closestRoomMappingSpawn[roomName];
+        }
+        let closest = 9999999;
+        let closestRoomName = null;
+        for (const otherRoomName in spawnsMapping) {
+            const d = Game.map.getRoomLinearDistance(roomName, otherRoomName);
+            if (d < closest) {
+                closest = d;
+                closestRoomName = otherRoomName;
+            }
+        }
+        closestRoomMappingSpawn[roomName] = closestRoomName;
+        return closestRoomName;
+    },
+
     constructRooms: function(room) {
         const roomName = room.name
         let name = 'construction-' + roomName + '-watcher'
@@ -38,11 +66,12 @@ var utilsroom = {
 
     upgradeRooms: function(r) {
         const roomName = r.name;
-        let name = 'upgradeRooms-' + roomName + '-watcher'
-        if (!os.existsThread(name)) {
+        let n = 'upgradeRooms-' + roomName + '-watcher'
+        if (!os.existsThread(n)) {
             const f = function() {
                 for (const role in common.creepMapping) {
-                    if (!(roomName in Game.rooms) || Game.rooms[roomName].energyCapacityAvailable == 0) {
+                    // todo i might need to fix this maybe itll generate in every room?
+                    if (!(roomName in Game.rooms)) { //|| Game.rooms[roomName].energyCapacityAvailable == 0) {
                         continue;
                     }
                     const name = 'roomUpgrader-' + roomName + '-role-' + role;
@@ -50,8 +79,11 @@ var utilsroom = {
                         const f = function() {
                             const room = Game.rooms[roomName];
                             if (!room) {
-                                console.log('utilsroom upgrade rooms room is empty ' + roomName + ' ' + room);
+                                //console.log('utilsroom upgrade rooms room is empty ' + roomName + ' ' + room);
                                 return; 
+                            }
+                            if (!room.controller || !room.controller.my || room.energyCapacityAvailable == 0) {
+                                return;
                             }
                             common.creepMapping[role].upgrade(room);
                         }
@@ -59,7 +91,7 @@ var utilsroom = {
                     }
                 }
             }
-            os.newTimedThread(name, f, 10, 10, 100); // spawn a new timed thread that runs every 40 ticks
+            os.newTimedThread(n, f, 10, 10, 100); // spawn a new timed thread that runs every 40 ticks
         }
     },
 
@@ -74,7 +106,7 @@ var utilsroom = {
                     room = Game.rooms[roomName];
                     if (!room) {
                         return;
-                    }``
+                    }
                     construction.build_link_near_sources(source);
 
                     // set sources energy request to 0

@@ -35,6 +35,7 @@ var roleSmartHarvester = {
         if (creep.memory.claimed_source == null) {
             creep.memory.claimed_source = creep.memory.destId;
         }
+        
         // handles setting the linked_claim
         if (creep.memory.claimed_source != null && creep.memory.claimed_target == null) {
             // the claimed target is null

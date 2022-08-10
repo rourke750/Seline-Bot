@@ -1,4 +1,5 @@
 let methodMapping = {};
+let pastExecutions = {};
 
 /**
  * Threads work by running even if their priority is low.  ie if you set the position to 10 but there is execution power for it to still run
@@ -198,7 +199,12 @@ var Threads = {
         return name in methodMapping;
     },
 
+    getStats: function() {
+        return pastExecutions;
+    },
+
     run: function() {
+        pastExecutions = {};
         // first run through just tick everyone
         let start = Game.cpu.getUsed();
         let loops = 0;
@@ -217,7 +223,9 @@ var Threads = {
                 break;
 
             try {
+                const s = Game.cpu.getUsed();
                 v.run();
+                pastExecutions[v.name] = Game.cpu.getUsed() - s;
             } catch (error) {
                 console.log(error + '\n' + error.stack)
             }

@@ -1,7 +1,25 @@
 let filtered_mapping = {};
 let filtered_role_home_mapping = {};
 
+let mapping_room_to_spawn = {};
+
 var utilscreep = {
+
+    generateRoomToSpawnMapping: function() {
+        mapping_room_to_spawn = {};
+        for (const k in Game.spawns) {
+            const spawn = Game.spawns[k];
+            if (!(spawn.room.name in mapping_room_to_spawn)) {
+                mapping_room_to_spawn[spawn.room.name] = [];
+            }
+            mapping_room_to_spawn[spawn.room.name].push(spawn);
+        }
+    },
+
+    getRoomToSpawnMapping: function() {
+        return mapping_room_to_spawn;
+    },
+
     get_filtered_creeps: function(role) {
         if (!(role in filtered_mapping)) {
             // doesnt exist lets add it

@@ -14,12 +14,14 @@ containerStructs[STRUCTURE_CONTAINER] = true;
 const wallRampartStructs = {};
 wallRampartStructs[STRUCTURE_RAMPART] = true;
 wallRampartStructs[STRUCTURE_WALL] = true;
+
+const LAST_RAN = {};
  
 var construction = {
 
     build_missing_spawn: function(roomName) {
         const room = Game.rooms[roomName];
-        if (!room) {
+        if (!room || !room.controller) {
             return;
         }
         if (room.controller.my && room.memory.spawnMaster == null && room.name in Memory.flags.capture) {
@@ -37,7 +39,6 @@ var construction = {
             room.memory['spawnMasterX'] = f.pos.x;
             room.memory['spawnMasterY'] = f.pos.y;
             room.memory['spawnMaster'] = `${room.name}-1`;
-            this.buildSpawnCenter(room);
             f.remove();
         }
     },
@@ -65,7 +66,7 @@ var construction = {
     // build a link near the spawns and roads that are needed
     buildAuxNearSpawn: function(room) {
         // we want to build a link and roads around the spawn
-        if (room.memory.spawnMaster == null) {
+        if (room.memory.spawnMaster == null || !room.controller.my) {
             return;
         }
 
@@ -131,7 +132,7 @@ var construction = {
         // build defense towers
 
         // build storage container
-        if (!this.doesConstructionExistAndCantBuild(room, [room.memory.spawnMasterX, room.memory.spawnMasterY+1], mergedFoundStructs)) {
+        if (!this.doesConstructionExistAndCantBuild(room, [room.memory.spawnMasterX, room.memory.spawnMasterY+1], containerStructs)) {
             paths.push([room.memory.spawnMasterX, room.memory.spawnMasterY+1, STRUCTURE_CONTAINER]);
         }
 
@@ -145,13 +146,16 @@ var construction = {
     },
 
     // This function handles building the spawn
-    buildSpawnCenter: function(room) {
-        if (construction.doesMemoryExistConstructon(room.name, 'spawns')) {
+    buildSpawnCenter: function(roomName) {
+        const room = Game.rooms[roomName];
+        if (!room) 
+            return;
+        if (construction.doesMemoryExistConstructon(roomName, 'spawns')) {
             return;
         }
 
         let maxSpawns = 1;
-        if (!room.controller.my) {
+        if (!room.controller || !room.controller.my) {
             return;
         } else if (room.controller.level == 7) {
             maxSpawns = 2;
@@ -181,12 +185,22 @@ var construction = {
 
         const paths = [];
 
-        // check if the master spawn is still there, if not rebuild it 
-        if (room.memory.spawnMaster != null && !Game.spawns[room.memory.spawnMaster]) {
+        // check if the master spawn is still there or if it was ever there, if not rebuild it 
+        if ((room.memory.spawnMaster == null && room.memory.spawnMasterX != null) || 
+            (room.memory.spawnMaster != null && !Game.spawns[room.memory.spawnMaster])) {
             // we are missing the master spawn rebuild it
-            const n = `${room.name}-1`;
+            let n = `${room.name}-1`;
+            // we are checking if we maybe got the name wrong and will update it if need be
+            const ts = room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY).look();
+            for (const tK in ts) {
+                const t = ts[tK];
+                if (t.type == 'structure' && t.structure.structureType == STRUCTURE_SPAWN) {
+                    n = t.structure.name;
+                    break; // dont need to loop any more
+                }
+            }
             // room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY).createConstructionSite(STRUCTURE_SPAWN, n);
-            paths.push([room.memory.spawnMasterX, room.memory.spawnMasterY, STRUCTURE_SPAWN]);
+            paths.push([room.memory.spawnMasterX, room.memory.spawnMasterY, STRUCTURE_SPAWN, n]);
             room.memory.spawnMaster = n;
         }
         const m = Game.spawns[room.memory.spawnMaster];
@@ -200,14 +214,14 @@ var construction = {
         if (!this.find_spawns_at_pos(room, secondLocation)) { // didnt find a spawn lets build it
             const n = `${room.name}-2`;
             //secondLocation.createConstructionSite(STRUCTURE_SPAWN, n);
-            paths.push([m.pos.x-1, m.pos.y+1, STRUCTURE_SPAWN]);
+            paths.push([m.pos.x-1, m.pos.y+1, STRUCTURE_SPAWN, n]);
         }
         // check for bottom right spawn if we can build it
         secondLocation = room.getPositionAt(m.pos.x+1, m.pos.y+1);
         if (!this.find_spawns_at_pos(room, secondLocation)) { // didnt find a spawn lets build it
             const n = `${room.name}-3`;
             //secondLocation.createConstructionSite(STRUCTURE_SPAWN, n);
-            paths.push([m.pos.x+1, m.pos.y+1, STRUCTURE_SPAWN]);
+            paths.push([m.pos.x+1, m.pos.y+1, STRUCTURE_SPAWN, n]);
         }
         construction.buildMemoryConstruction(room.name, 'spawns', paths);
     },
@@ -229,16 +243,11 @@ var construction = {
         /* goal of this method is to build a link that will match up with with a source and is close to the spawn, 
         then haulers can carry energy to where its needed
         */
-        /*
-        for (const f in Game.flags) {
-            if (Game.flags[f].pos.roomName == 'W3N7') {
-                Game.flags[f].remove()
-            }
+        if (!source.room.controller || !source.room.controller.my || (Game.time + 40) % 1000 != 0) {
+            return;
         }
-        */
-        //pos.createFlag();
                 
-        if (!((Game.time + 40) % 1000 == 0 && source.room.controller.level >= 6)) {
+        if (source.room.controller.level < 5) {
             return
         }
         
@@ -348,7 +357,7 @@ var construction = {
     
     build_extensions: function(room) {
 
-        if (!room.controller.my)
+        if (!room.controller || !room.controller.my)
             return;
 
         // todo build that cool design i saw 
@@ -404,13 +413,16 @@ var construction = {
         const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
         const sources = room.find(FIND_SOURCES);
         let sCost;
-        if (Memory.construction && room.name in Memory.construction && Memory.construction[room.name].costMatrix) {
-            sCost = Memory.construction[room.name].costMatrix
+        if (Memory.costMatrix && room.name in Memory.costMatrix) {
+            sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
         }
         for (const sourceKey in sources) {
             const sourceV = sources[sourceKey];
             const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, sourceV.pos.x, sourceV.pos.y, 
                 {swampCost:2}));
+            if (!sCost) {
+                sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
+            }
             for (var i = 0; i < paths.length; i++) {
                 const path = paths[i];
                 const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
@@ -418,6 +430,7 @@ var construction = {
                 if (ter != 'wall' && struct.length == 0) {
                     //room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
                     memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
+                    sCost.set(path.x, path.y, 1);
                 }
             }
         }
@@ -436,11 +449,11 @@ var construction = {
         const memoryPaths = [];
         const startPosition = {pos: room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), room: room};
         let sCost;
-        if (Memory.construction && room.name in Memory.construction && Memory.construction[room.name].costMatrix) {
-            sCost = Memory.construction[room.name].costMatrix
-        }
         const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, room.controller.pos.x, room.controller.pos.y, 
             {swampCost:2}));
+        if (Memory.costMatrix && room.name in Memory.costMatrix) {
+            sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
+        }
         for (var i = 0; i < paths.length; i++) {
             const path = paths[i];
             const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
@@ -448,6 +461,7 @@ var construction = {
             if (ter != 'wall' && struct.length == 0) {
                 //room.createConstructionSite(path.x, path.y, STRUCTURE_ROAD);
                 memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
+                sCost.set(path.x, path.y, 1);
             }
         }
         construction.buildMemoryConstruction(room.name, 'roadsfrommastertocontroller', memoryPaths);
@@ -480,7 +494,7 @@ var construction = {
 
     buildRoadsFromMasterSpawnToExits: function(room) {
         // first let's check check highway
-        if (Memory.highway == null || !room.controller.my) {
+        if (Memory.highway == null || !room.controller || !room.controller.my) {
             // no highway just exit
             return;
         }
@@ -495,16 +509,18 @@ var construction = {
 
         const currentRoom = Memory.highway[room.name];
         let sCost;
-        if (Memory.construction && room.name in Memory.construction && Memory.construction[room.name].costMatrix) {
-            sCost = Memory.construction[room.name].costMatrix
+        if (Memory.costMatrix && room.name in Memory.costMatrix) {
+            sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
         }
-        for (const roomK in currentRoom) {
-            const roomV = currentRoom[roomK];
-            const start = roomV.start;
+        for (const roomK in currentRoom.exits) {
+            const start = currentRoom.exits[roomK];
             if (start != null) {
                 // build road from master spawn to start
                 const paths = Room.deserializePath(pathFinder.find_path_in_room(startPosition, start.x, start.y, 
                     {swampCost:2}));
+                if (!sCost) {
+                    sCost = PathFinder.CostMatrix.deserialize(Memory.costMatrix[room.name]);
+                }
                 for (var i = 1; i < paths.length - 1; i++) {
                     const path = paths[i];
                     if (this.doesConstructionExistAndCantBuild(room, path, roadStructs))
@@ -512,6 +528,7 @@ var construction = {
                     const ter = room.lookForAt(LOOK_TERRAIN, path.x, path.y);
                     if (ter != 'wall') {
                         memoryPaths.push([path.x, path.y, STRUCTURE_ROAD]);
+                        sCost.set(path.x, path.y, 1);
                     }
                 }
             }
@@ -524,6 +541,7 @@ var construction = {
         if (roomName != "W3N7") {
             return;
         }
+        return;
 
         if (construction.doesMemoryExistConstructon(roomName, 'wallsAndRamparts')) {
             return;
@@ -531,7 +549,7 @@ var construction = {
 
         // todo scan each side and build the wall
         const room = Game.rooms[roomName]; 
-        if (!room || !room.controller.my) {
+        if (!room || !room.controller || !room.controller.my) {
             return;
         }
         const t = room.getTerrain();
@@ -619,11 +637,11 @@ var construction = {
             }
 
             // generate an exit if one doesn't exist in order for the rampart to be placed
-            if (Memory.highway[roomName][exits[eK]] == null) {
+            if (!(eK in Memory.highway[roomName].exits)) {
                 pathFinder.find_highway(room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), exits[eK]);
             }
             // we will discover where to place rampart based on the location of the path from spawn to exit
-            const start = Memory.highway[roomName][exits[eK]].start;
+            const start = Memory.highway[roomName].exits[eK];
             const pathToExit = Room.deserializePath(pathFinder.find_path_in_room({
                 pos: {x:room.memory.spawnMasterX, y:room.memory.spawnMasterY, roomName:roomName}, room:room
             },
@@ -749,9 +767,16 @@ var construction = {
             return;
         }
         const pathsArray = Memory.construction[roomName].paths;
+        const pathsKeys = Object.keys(pathsArray);
+        pathsKeys.sort(function(a, b) {
+            const aa = common.constructionPriority[a] || 10;
+            const bb = common.constructionPriority[b] || 10;
+            return aa - bb;
+        });
         let count = room.find(FIND_CONSTRUCTION_SITES).length;
         
-        for (const pathKey in pathsArray) {
+        for (const pK in pathsKeys) {
+            const pathKey = pathsKeys[pK];
             if (count >= common.maxConstructionsPerRoom) // break if we have constructed more than listed
                 break;
             const paths = pathsArray[pathKey];
@@ -760,7 +785,10 @@ var construction = {
                     break;
                 const path = paths[pKey];
                 paths.pop();
-                room.getPositionAt(path[0], path[1]).createConstructionSite(path[2]);
+                let name = null;
+                if (path[2] == STRUCTURE_SPAWN)
+                    name = path[3];
+                room.getPositionAt(path[0], path[1]).createConstructionSite(path[2], name);
                 count++;
             }
             if (paths.length == 0) {
@@ -771,22 +799,16 @@ var construction = {
 
     generateThreads: function(room) {
         const roomName = room.name;
-        let name = 'construction-' + room.name + '-build_missing_spawn';
-        if (!os.existsThread(name)) {
-            const f = function() {
-                construction.build_missing_spawn(room.name);
-            } 
-            os.newThread(name, f, 5, true);
-        }
 
-        name = 'construction-' + room.name + '-build_aux';
+        let name = 'construction-' + room.name + '-build_aux';
         if (!os.existsThread(name)) {
             const f = function() {
                 const room = Game.rooms[roomName];
                 if (!room) {
                     return;
                 }
-                construction.buildSpawnCenter(room); // hanldes building the spawns
+                construction.build_missing_spawn(roomName);
+                construction.buildSpawnCenter(roomName); // hanldes building the spawns
                 construction.build_extensions(room); // hanldes building the extensions
                 // handles building the roads to extensions, towers, link near spawn, other center piece stuff
                 construction.buildAuxNearSpawn(room);
@@ -794,7 +816,7 @@ var construction = {
                 construction.buildRoadFromMasterSpawnToSources(room);
                 construction.buildRoadsFromMasterSpawnToController(room);
             } 
-            os.newTimedThread(name, f, 10, 1, 20); // spawn a new timed thread that runs every 20 ticks
+            os.newTimedThread(name, f, 10, 1, 100); // spawn a new timed thread that runs every 20 ticks
         }
 
         name = 'construction-' + room.name + '-remove_old_roads';

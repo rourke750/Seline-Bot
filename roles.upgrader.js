@@ -17,7 +17,7 @@ var roleUpgrader = {
     
     get_harvest_count: function(room) {
         // todo get the amount of repairs needed and spawn based on it
-        if (room.controller.my && room.controller.level < 8) {
+        if (room.controller && room.controller.my && room.controller.level < 8) {
             return 6;
         }
         return 2;

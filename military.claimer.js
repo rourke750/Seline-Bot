@@ -7,9 +7,9 @@ const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)]
 ];
 
-const keyFlags = ['reserve', 'capture']
+const keyFlags = ['reserve', 'capture', 'captureAuto']
  
-var militaryScout = {
+var militaryClaimer = {
     get_room_controller: function(creep) {
         if (creep.room.name != creep.memory.dstRoom) {
             return null;
@@ -17,7 +17,7 @@ var militaryScout = {
         return creep.room.controller;
     },
 
-    find_loc: function(creep, flagType) {
+    find_loc: function(creep) {
         const f = Memory.flags;
         for (const ft in keyFlags) {
             const flagType = keyFlags[ft];
@@ -28,9 +28,11 @@ var militaryScout = {
                     continue;
                 if (flagType == 'capture' && Object.keys(l).length == 1)
                     continue;
+                if (flagType == 'captureAuto' && Object.keys(l).length == 1)
+                    continue;
                 creep.memory.destLoc = {x: 22, y: 22, roomName: roomName};
                 rooms[roomName][creep.name] = true;
-                if (flagType == 'capture') {
+                if (flagType == 'capture' || flagType == 'captureAuto') {
                     creep.memory.capture = true;
                 }
                 return true;
@@ -43,12 +45,12 @@ var militaryScout = {
         // let's check if the current room is owned by us if it is we need to go elseware
         if (creep.spawning) {
             return;
-        } 
+        }
         // todo delete below code and add if destLocNull
         if (creep.memory.destLoc == null) {
             // todo assign to a flag that doesn't have the members
             
-            this.find_loc(creep, 'reserve')
+            this.find_loc(creep);
         }
 
         if (creep.memory.destLoc == null) {
@@ -74,9 +76,9 @@ var militaryScout = {
     },
 	
 	create_creep: function(spawn) {
-        var newName = 'Scout' + Game.time + spawn.name.charAt(spawn.name.length - 1);
+        var newName = 'Claimer' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_scout][1], newName,
-            {memory: {role: 'scout', capture: false}});
+            {memory: {role: 'claimer', capture: false}});
         if (Game.creeps[newName]) {
             return Game.creeps[newName];
         }
@@ -108,4 +110,4 @@ var militaryScout = {
     
 }
 
-module.exports = militaryScout;
+module.exports = militaryClaimer;

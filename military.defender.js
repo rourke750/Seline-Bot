@@ -1,29 +1,68 @@
 var utils = require('utils');
 
-const normal_creep = [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH,
-    TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, 
-    MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE,
-    ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK]; // 
-//const normal_creep = [MOVE, MOVE]; // 300
+const normal_creep = [TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,TOUGH,
+    TOUGH,TOUGH,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,MOVE,ATTACK,
+    ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,ATTACK,
+    ATTACK,ATTACK,ATTACK,ATTACK,ATTACK];
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)]
 ]
  
 var militaryDefender = {
+
+    getEnemy: function(creep) {
+        let t = creep.pos.findClosestByPath(FIND_HOSTILE_CREEPS, {filter: function(creep) {
+            return creep.owner in Memory.allies && Memory.allies[creep.owner].enemy && struct.pos.roomName == creep.memory.tRoom;
+        }});
+        if (t == null) {
+            t = creep.pos.findClosestByPath(FIND_HOSTILE_STRUCTURES, {filter: function(struct) {
+                return struct.owner.username in Memory.allies && Memory.allies[struct.owner.username].enemy 
+                && struct.pos.roomName == creep.memory.tRoom && struct.structureType != "keeperLair";
+            }});
+        }
+        if (!t) {
+            t = {pos: {x: 22, y: 22, roomName: creep.memory.tRoom}};
+        }
+        return t;
+    },
     
     run: function(creep) {
         if (creep.spawning) {
             return;
         }
-        creep.pos.findClosestByPath(FIND_HOSTILE_CREEPS)
-        
+        creep.notifyWhenAttacked(false);
+        // first lets see if we have a destination room we need to go to and if we are not in it then move there
+        if (creep.current_path == null && creep.pos.roomName != creep.memory.tRoom) {
+            creep.memory.destLoc = {x: 22, y: 22, roomName: creep.memory.tRoom};
+        }
+        // move to room
+        if (creep.pos.roomName != creep.memory.tRoom) {
+            utils.move_to(creep);
+        }
+
+        if (creep.pos.roomName == creep.memory.tRoom && creep.memory.dstLoc == null) {
+            creep.memory.destLoc = {x: 22, y: 22, roomName: creep.memory.tRoom};
+        }
+
+        if (creep.memory.destId == null) {
+            utils.move_to(creep, this.getEnemy);
+        }
+
+        // move to enemy
+        const enemy = Game.getObjectById(creep.memory.destId)
+        if (enemy != null) {
+            if (creep.attack(enemy) == ERR_NOT_IN_RANGE)
+                utils.move_to(creep, this.getEnemy);
+        } else {
+            utils.move_to(creep, this.getEnemy);
+        }
     },
 	
-	create_creep: function(spawn) {
+	create_creep: function(spawn, dstRoom) {
         var newName = 'Defender' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_defender][1], newName,
-            {memory: {role: 'defender'}});
+            {memory: {role: 'defender', tRoom: dstRoom}});
         if (Game.creeps[newName]) {
             return Game.creeps[newName];
         }
