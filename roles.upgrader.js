@@ -20,7 +20,7 @@ var roleUpgrader = {
         if (room.controller && room.controller.my && room.controller.level < 8) {
             return 6;
         }
-        return 2;
+        return 3;
     },
     
     get_main_upgrader: function(creep) {
@@ -81,6 +81,10 @@ var roleUpgrader = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
 }
 

@@ -147,9 +147,12 @@ var roleHauler = {
                 const tErr = creep.transfer(dst, RESOURCE_ENERGY);
                 
                 if (tErr == ERR_NOT_IN_RANGE) {
-                    utils.move_to(creep);
+                    utils.move_to(creep, null, true, true);
                 } else if (tErr == ERR_FULL) {
                     // we are full we will find a new one next turn
+                    utils.cleanup_move_to(creep);
+                } else if (tErr == 0) {
+                    // success but we can prob get a new target now
                     utils.cleanup_move_to(creep);
                 }
             }
@@ -187,6 +190,10 @@ var roleHauler = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
 };
 

@@ -5,6 +5,8 @@ const roleRepairer = require('roles.repairer');
 const roleSmartHarvester = require('roles.smart_harvester');
 const roleHauler = require('roles.hauler');
 const roleScout = require('roles.scout');
+const roleCanHarvester = require('roles.canHarvester');
+const roleTransport = require('roles.transport');
 
 const militaryClaimer = require('military.claimer');
 const militaryDefender = require('military.defender');
@@ -40,32 +42,9 @@ const creepMapping = {
     'smartHarvester' : roleSmartHarvester,
     'defender' : militaryDefender,
     'hauler' : roleHauler,
-    'scout' : roleScout
-}
-
-const profilerMapings = {
-    'utils' : utils,
-    'roleHarvester' : roleHarvester,
-    'roleUpgrader' : roleUpgrader,
-    'roleBuilder' : roleBuilder,
-    'roleRepairer' : roleRepairer,
-    'roleSmartHarvester' : roleSmartHarvester,
-    'militaryDefender' : militaryDefender,
-    'militaryClaimer' : militaryClaimer,
-    'roleHauler' : roleHauler,
-    'construction' : construction,
-    'pathfinder' : pathFinder,
-    'scout' : roleScout
-}
-
-//profiler.enable();
-//console.log(JSON.stringify(utils.valueOf()))
-for (const pMap in profilerMapings) {
-    for (const k in profilerMapings[pMap]) {
-        if (typeof profilerMapings[pMap][k] == 'function') {
-            profilerMapings[pMap][k] = profiler.registerFN(profilerMapings[pMap][k], `${pMap}.${k}`);
-        }
-    }
+    'scout' : roleScout,
+    'canHarvester': roleCanHarvester,
+    'transport': roleTransport,
 }
 
 global.utils = utils;
@@ -161,7 +140,7 @@ function loopRooms() {
     for (var name in Game.rooms) {
         const room = Game.rooms[name];
         utilsroom.constructRooms(room);
-        utilsroom.upgradeRooms(room);
+        utilsroom.upgradeRooms(room, creepMapping);
         militaryTower.run(room);
 
         utilsroom.handleSources(room);
@@ -206,6 +185,24 @@ function loopSpawns() {
         }
         os.newThread(name, f, 10);
     }
+
+    name = 'main-handle-creep-spawning-canHarvester'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = utilscreep.getRoomToSpawnMapping();
+            creepConstruction.handleBuildCanMiner(mapping);
+        }
+        os.newThread(name, f, 10);
+    }
+
+    name = 'main-handle-creep-spawning-transfer'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = utilscreep.getRoomToSpawnMapping();
+            creepConstruction.handleBuildTransport(mapping);
+        }
+        os.newThread(name, f, 10);
+    }
 }
 
 function handleCreeps() {
@@ -214,6 +211,7 @@ function handleCreeps() {
         const f = function() {
             for(var i in Memory.creeps) {
                 if(!Game.creeps[i]) {
+                    creepMapping[Memory.creeps[i].role].cleanUp(i);
                     delete Memory.creeps[i];
                 }
             }

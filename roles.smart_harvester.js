@@ -64,7 +64,7 @@ var roleSmartHarvester = {
         }
 
         const target = Game.getObjectById(creep.memory.claimed_target);
-        if (creep.store.getUsedCapacity() > 0) {
+        if (creep.store.getUsedCapacity() > 40) { // save some intent
             // transfer to container
             const tErr = creep.transfer(target, RESOURCE_ENERGY);
 
@@ -101,7 +101,7 @@ var roleSmartHarvester = {
             const masterTarget = Game.getObjectById(creep.room.memory.masterLink);
             transErr = target.transferEnergy(masterTarget);
             if (transErr != 0) {
-                console.log('error with transfering energy to master ' + transErr)
+                console.log('error with transfering energy to master ' + transErr, creep.pos)
             }
         }
     },
@@ -138,9 +138,11 @@ var roleSmartHarvester = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
-    
-    
 }
 
 module.exports = roleSmartHarvester;

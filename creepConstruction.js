@@ -8,11 +8,17 @@ const roleRepairer = require('roles.repairer');
 const roleSmartHarvester = require('roles.smart_harvester');
 const roleHauler = require('roles.hauler');
 const roleScout = require('roles.scout');
+const roleCanHarvester = require('roles.canHarvester');
+const roleTransport = require('roles.transport');
 
 const militaryClaimer = require('military.claimer');
 const militaryDefender = require('military.defender');
 
 const military = require('military');
+
+const common = require('common');
+
+const transport = require('transport');
 
 var creepConstruction = {
     handle_build_order: function(spawnsMapping, roomName) {
@@ -28,6 +34,12 @@ var creepConstruction = {
             const roomSmartHarvesters = utilscreep.get_role_home_filtered_creeps(roomName, 'smartHarvester');
             const roomHaulers = utilscreep.get_role_home_filtered_creeps(roomName, 'hauler');
             const smartCount = roleSmartHarvester.get_harvest_count(spawn.room);
+            /* 
+            first two if statements are involved with haulers and smart harvesters
+            they will handle respawning more when needed
+            third if statement will handle removing harvesters from spawning once we have smart harvesters as they
+            are no longer needed. Can miners handle everything else
+            */
             if (roomHaulers.length == 1 && roomSmartHarvesters.length < smartCount) {
                 // if we have a hauler but not enough smart harvesters then build smart harvester
                 const newCreep = roleSmartHarvester.create_creep(spawn); 
@@ -87,6 +99,8 @@ var creepConstruction = {
             }
             if (spawn.spawning) { 
                 var spawningCreep = Game.creeps[spawn.spawning.name];
+                if (!spawningCreep)
+                    continue;
                 spawn.room.visual.text(
                     '🛠️' + spawningCreep.memory.role,
                     spawn.pos.x + 1, 
@@ -99,7 +113,7 @@ var creepConstruction = {
         const roomHaulers = utilscreep.get_role_home_filtered_creeps(roomName, 'hauler');
         const roomUpgraders = utilscreep.get_role_home_filtered_creeps(roomName, 'upgrader');
 
-        const roomHarvesters = utils.notZero((roomHarvesterss.length / roleHarvester.get_harvest_count(Game.rooms[roomName])));
+        const roomHarvesters = utils.notZero((roomHarvesterss.length / 4));
         const upgraderPer = utils.notZero((roomUpgraders.length / roleUpgrader.get_harvest_count(Game.rooms[roomName])));
         const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / roleSmartHarvester.get_harvest_count(Game.rooms[roomName])));
         const haulersPerr = utils.notZero((roomHaulers.length / roleHauler.get_harvest_count(Game.rooms[roomName])));
@@ -139,24 +153,29 @@ var creepConstruction = {
     },
 
     handle_build_no_spawns_defender_helper: function(spawnsMapping, count, roomName) {
-        let closestRoomName = utilsRoom.getClosestRoomFromRoom(spawnsMapping, roomName);
+        let closestRoomArray = utilsRoom.getClosestRoomFromRoom(spawnsMapping, roomName, true);
+        closestRoomArray.length = Math.min(closestRoomArray.length, 3); // get the 3 closest rooms
 
-        for (const sK in spawnsMapping[closestRoomName]) {
-            const defenders = _.filter(utilscreep.get_filtered_creeps('defender'), (creep) => creep.name in Memory.defenders[roomName].creeps);
-            const defendersPer = defenders.length;
-            if (defendersPer >= count) {
-                break;
-            }
-            const spawn = spawnsMapping[closestRoomName][sK];
-            if (spawn.spawning) {
-                continue;
-            }
-            
-            const newCreep = militaryDefender.create_creep(spawn, roomName);
-            if (newCreep != null) { // if new creep created add to list
-                utilscreep.add_creep(newCreep);
-                Memory.defenders[roomName].creeps[newCreep.name] = true;
-                console.log('creepConstruction ' + roomName + ' has enemies, sending defenders')
+        for (const closestRoomK in closestRoomArray) { // go through each room until we find one we can use
+            const closestRoomName = closestRoomArray[closestRoomK];
+            for (const sK in spawnsMapping[closestRoomName]) {
+                const defenders = _.filter(utilscreep.get_filtered_creeps('defender'), (creep) => creep.name in Memory.defenders[roomName].creeps);
+                const defendersPer = defenders.length;
+                if (defendersPer >= count) {
+                    break;
+                }
+                const spawn = spawnsMapping[closestRoomName][sK];
+                if (spawn.spawning) {
+                    continue;
+                }
+                
+                const newCreep = militaryDefender.create_creep(spawn, roomName);
+                if (newCreep != null) { // if new creep created add to list
+                    utilscreep.add_creep(newCreep);
+                    Memory.defenders[roomName].creeps[newCreep.name] = true;
+                    console.log('creepConstruction ' + roomName + ' has enemies, sending defenders')
+                    return; // exit loop
+                }
             }
         }
     },
@@ -206,6 +225,87 @@ var creepConstruction = {
                     }
                     continue;
                 }
+            }
+        }
+    },
+
+    handleBuildCanMiner(spawnsMapping) {
+        // todo only after certain rcl do we want to start using can miners
+        for (const roomName in Game.rooms) {
+            if (roomName != 'W7N7')
+                continue;
+            
+            const room = Game.rooms[roomName];
+            if (!room.controller || !room.controller.my)
+                continue; // don't build can miners from rooms i don't own
+            
+            // now go through surronding rooms
+            const exits = Game.map.describeExits(roomName);
+            for (const k in exits) {
+                const oRoom = exits[k];
+                // check if we already own room
+                if (Game.rooms[oRoom] && Game.rooms[oRoom].controller && Game.rooms[oRoom].controller.my) {
+                    continue;
+                }
+                // get sources for the room
+                const sources = Memory.rooms[oRoom].sources;
+                for (const id in sources) {
+                    // now go through the sources
+                    const source = sources[id];
+                    if (!source.canCreep) {
+                        // we can spawn a can miner
+                        // go through the spawns
+                        for (const sK in spawnsMapping[roomName]) {
+                            const spawn = spawnsMapping[roomName][sK];
+                            const newCreep = roleCanHarvester.create_creep(spawn, id, oRoom);
+                            if (newCreep) {
+                                source.canCreep = newCreep.name;
+                                utilscreep.add_creep(newCreep);
+                                break;
+                            }
+                        }
+                        break; // todo remove
+                    }
+                }
+                break; // todo remove
+            }
+        }
+    },
+
+    handleBuildTransport: function(spawnsMapping) {
+        // handle building a transport to pick up energy from a can miner
+        for (const roomName in Game.rooms) {
+            if (roomName != 'W7N7')
+                continue;
+            
+            const room = Game.rooms[roomName];
+            if (!room.controller || !room.controller.my)
+                continue; // don't build can miners from rooms i don't own
+
+            const exits = Game.map.describeExits(roomName);
+            
+            let total = utilscreep.get_role_home_filtered_creeps(roomName, common.creepRole.TRANSPORT).length;
+            
+            // get numbers of how many we want from neighboring rooms
+            let want = transport.getTransportWant(exits);
+
+            // now try figure out how many to spawn
+
+            //const creepCount = utilscreep.getSourceCreepCount(id, oRoom);
+            //if (creepCount >= 1) {
+            //    continue;
+            //}
+            if (total >= want)
+                continue;
+            for (const sK in spawnsMapping[roomName]) {
+                const spawn = spawnsMapping[roomName][sK];
+                const newCreep = roleTransport.create_creep(spawn);
+                if (newCreep) {
+                    utilscreep.add_creep(newCreep);
+                    total += 1;
+                }
+                if (total >= want)
+                    break;
             }
         }
     }

@@ -72,6 +72,10 @@ var roleRepairer = {
         for (const k in lastUpdated[creep.memory.home_room].structs) {
             const id = lastUpdated[creep.memory.home_room].structs[k];
             const v = Game.getObjectById(id);
+            if (v == null) {
+                //skip
+                continue;
+            }
 
             // check the structure if it needs repairs
             let needsRepairs = false;
@@ -106,7 +110,6 @@ var roleRepairer = {
         
         if (!creep.memory.repairing) {
             if (!utils.harvest_source(creep)) {
-                console.log('herm')
                 creep.memory.repairing = true;
                 utils.cleanup_move_to(creep);
             }
@@ -179,6 +182,10 @@ var roleRepairer = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
 };
 

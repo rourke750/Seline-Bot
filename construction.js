@@ -14,6 +14,7 @@ containerStructs[STRUCTURE_CONTAINER] = true;
 const wallRampartStructs = {};
 wallRampartStructs[STRUCTURE_RAMPART] = true;
 wallRampartStructs[STRUCTURE_WALL] = true;
+const towerStructs = {STRUCTURE_TOWER: true};
 
 const roadMappings = {};
  
@@ -172,6 +173,11 @@ var construction = {
             paths.push([room.memory.spawnMasterX+1, room.memory.spawnMasterY+5, STRUCTURE_STORAGE]);
         }
 
+        // build tower
+        if (!this.doesConstructionExistAndCantBuild(room, [room.memory.spawnMasterX-4, room.memory.spawnMasterY], towerStructs)) {
+            paths.push([room.memory.spawnMasterX-4, room.memory.spawnMasterY, STRUCTURE_TOWER]);
+        }
+
         construction.saveRoadsToHeap(room.name, 'auxnearspawns', heapPaths)
         // send off to memory
         construction.buildMemoryConstruction(room.name, 'auxnearspawns', paths);
@@ -279,7 +285,7 @@ var construction = {
             return;
         }
                 
-        if (source.room.controller.level < 5) {
+        if (source.room.controller.level < 5 || !source.room.memory.masterLink) {
             return
         }
         
@@ -358,7 +364,7 @@ var construction = {
                 if (found)
                     break;
             }
-        } else if (conErr != 0) {
+        } else if (conErr != 0 && conErr != ERR_RCL_NOT_ENOUGH) {
             console.log('failed to create construction site for STRUCTURE_LINK ' + conErr);
             // it shouldnt create one without x, y being set as well.
             return;

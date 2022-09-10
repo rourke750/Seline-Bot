@@ -1,6 +1,8 @@
 let methodMapping = {};
 let pastExecutions = {};
 
+let errorStacks = {};
+
 /**
  * Threads work by running even if their priority is low.  ie if you set the position to 10 but there is execution power for it to still run
  * then it will run.
@@ -228,6 +230,10 @@ var Threads = {
                 pastExecutions[v.name] = Game.cpu.getUsed() - s;
             } catch (error) {
                 console.log(error + '\n' + error.stack)
+                if (!(error.stack in errorStacks)) {
+                    Game.notify(error.stack);
+                    errorStacks[error.stack] = true;
+                }
             }
 
             //console.log(v.name + ' ' +v.value() + ' ' + i);

@@ -66,8 +66,14 @@ var utils = {
                     return structure.room.name == creep.room.name && structure.structureType == STRUCTURE_SPAWN;
                 }
             });
-            creep.memory.destId = spawn.id;
-            creep.memory.destLoc = null;
+            if (spawn == null) {
+                // no spawn was found maybe just suicide
+                creep.suicide();
+                return;
+            } else {
+                creep.memory.destId = spawn.id;
+                creep.memory.destLoc = null;
+            }
         }
         const spawn = Game.getObjectById(creep.memory.destId);
         if (spawn.recycleCreep(creep) == ERR_NOT_IN_RANGE) {
@@ -166,6 +172,12 @@ var utils = {
 
                         // let's check if it is being smart harvested
                         if (oV.smartCreep != null) {
+                            // smart harvester continue
+                            continue;
+                        }
+
+                        // Le'ts check if there is a can miner if so skip
+                        if (oV.canCreep != null) {
                             // smart harvester continue
                             continue;
                         }
@@ -291,7 +303,10 @@ var utils = {
         // now check dest loc if we are smart harvesting it
         // if we are smart harvesting then we must pick a new source
         const tempMemSource = Memory.rooms[position.roomName].sources[destId];
-        if (tempMemSource != null && tempMemSource.smartCreep != null && tempMemSource.smartCreep != creep.name) {
+        if (tempMemSource != null && (
+            (tempMemSource.smartCreep != null && tempMemSource.smartCreep != creep.name) ||
+            (tempMemSource.canCreep != null && tempMemSource.canCreep != creep.name))
+            ) {
             this.cleanup_move_to(creep);
             if(!this.find_source(creep)) {
                 return true;
@@ -359,7 +374,7 @@ var utils = {
             this.cleanup_move_to(creep);
             console.log('harvest source error not owner ' + hErr + ' ' +creep.name)
         } else if (hErr != 0) {
-            console.log('harvest source error ' + hErr + ' ' +creep.name)
+            console.log('harvest source error ' + hErr + ' ' +creep.name, creep.pos)
         }
         
         return true;
@@ -406,7 +421,7 @@ var utils = {
         delete creep.memory.dstRoomPath; // it is no longer needed get rid of it
     },
     
-    move_to: function(creep, newRoomFunc=null, avoidCreepIfStuck=true) {
+    move_to: function(creep, newRoomFunc=null, avoidCreepIfStuck=true, pickNewTargetIfStuck=false) {
         // hanldes destinations even in other rooms
         const v = this.move_to_helper(creep);
         if (v == null) {
@@ -421,6 +436,13 @@ var utils = {
             } else {
                 // we are in the same room lets get a path
                 creep.memory.current_path = {};
+                // check if v[0] or v[1] are null
+                if ((!v[0] || !v[1]) && Game.getObjectById(creep.memory.destId)) {
+                    // see if dst id is set
+                    const t = Game.getObjectById(creep.memory.destId);
+                    v[0] = t.pos.x;
+                    v[1] = t.pos.y;
+                }
                 const p = pathFinder.find_path_in_room(creep, v[0], v[1]);
                 creep.memory.current_path[creep.room.name] = p;
             }
@@ -428,7 +450,7 @@ var utils = {
         
         // below code is beginning steps if we are stuck in position, in the future we can try ask the offending creep to move out the way
         if (creep.memory.last_pos != null && creep.pos.isEqualTo(creep.memory.last_pos.x, creep.memory.last_pos.y) 
-            && creep.fatigue == 0 && avoidCreepIfStuck) {
+            && creep.fatigue == 0 && avoidCreepIfStuck && creep.memory.last_pos_time+1 == Game.time) {
             // get the path we are currently traveling
             const sePath = creep.memory.current_path[creep.room.name];
             if (sePath != "" && sePath != null) {
@@ -485,6 +507,7 @@ var utils = {
         if (creep.fatigue == 0) {
             const errCode = creep.moveByPath(p);
             creep.memory.last_pos = creep.pos;
+            creep.memory.last_pos_time = Game.time;
             if (errCode == ERR_NOT_FOUND) {
                 return;
                 //creep.memory.current_path = {};
@@ -511,6 +534,7 @@ var utils = {
     
     cleanup_move_to: function(creep) {
         creep.memory.last_pos = null;
+        creep.memory.last_pos_time = undefined;
         creep.memory.current_path = null;
         creep.memory.destId = null;
         creep.memory.destLoc = null;

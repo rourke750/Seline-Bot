@@ -57,6 +57,9 @@ const pathGenerator = {
                     }
                 }
             }
+            // check if there is a wall if so set range to large
+            if (range == 0 && creep.room.getTerrain().get(dstX, dstY) == TERRAIN_MASK_WALL)
+                range = 10;
         }
         
         const v = PathFinder.search(creep.pos, {'pos': new RoomPosition(dstX, dstY, creep.pos.roomName), 'range': range},
@@ -425,10 +428,13 @@ const pathGenerator = {
 
     test: function() {
         const s = Game.cpu.getUsed();
-        Game.rooms['W7N7'].getPositionAt(12, 24).lookFor(LOOK_STRUCTURES)//.createConstructionSite(STRUCTURE_ROAD)
-        for (let x = 0; x < 10; x++) {
-            continue
-        }
+        const d = {}
+        d['test'] = {a: 'aaaaa', b: "fsdnfjsdf"};
+        d['test2'] = {a: 'aaaaa', b: "fsdnfjsdf"};
+        d['test3'] = {a: 'aaaaa', b: "fsdnfjsdf"};
+
+        //delete d['test2']
+        
         return Game.cpu.getUsed() - s;
     },
 

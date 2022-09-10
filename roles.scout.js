@@ -80,6 +80,10 @@ var militaryClaimer = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
     
 }

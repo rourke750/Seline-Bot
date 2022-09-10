@@ -106,6 +106,10 @@ var militaryClaimer = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
     
 }

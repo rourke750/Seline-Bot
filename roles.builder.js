@@ -134,6 +134,10 @@ var roleBuilder = {
                 room.memory.upgrade_pos_builder = n[0];
             }
         }
+    },
+
+    cleanUp(id) {
+        
     }
 };
 

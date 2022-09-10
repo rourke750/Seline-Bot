@@ -5,6 +5,11 @@ const ROOM_TYPE = {
     OWNED: 3
 }
 
+const CREEP_ROLE = {
+    CAN_HARVESTER: 'canHarvester',
+    TRANSPORT: 'transport',
+}
+
 const CONSTRUCTION_PRIORITY = {
     'spawns': 1,
     'extensions': 2,
@@ -16,6 +21,7 @@ const common = {
     username: 'rourke750',
 
     constructionPriority: CONSTRUCTION_PRIORITY,
+    creepRole: CREEP_ROLE,
 }
 
 module.exports = common;
