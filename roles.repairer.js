@@ -14,6 +14,14 @@ const build_creeps = [
 const lastUpdated = {}; // mapping of room name to structures
 
 var roleRepairer = {
+
+    moveOutOfWayNoEnergy: function(creep) {
+        if (creep.room.name == 'W1N1') {
+            const objs = construction.getRoadMappings(creep.memory.home_room);
+            const pos = Math.floor(Math.random() * objs.length);
+            return Game.getObjectById(objs[pos]);
+        }
+    },
     
     get_harvest_count: function(room) {
         var totalRepairPoints = 0
@@ -103,8 +111,12 @@ var roleRepairer = {
 
     /** @param {Creep} creep **/
     run: function(creep) {
+        //todo just rewrite this
         if (creep.memory.repairing && creep.store[RESOURCE_ENERGY] == 0) {
             creep.memory.repairing = false;
+            utils.cleanup_move_to(creep);
+        } else if (!creep.memory.repairing && creep.store.getFreeCapacity(RESOURCE_ENERGY) == 0) {
+            creep.memory.repairing = true;
             utils.cleanup_move_to(creep);
         }
         
@@ -114,7 +126,7 @@ var roleRepairer = {
                 utils.cleanup_move_to(creep);
             }
         }
-        if(creep.memory.repairing) {
+        if (creep.memory.repairing) {
             if (creep.room.name != creep.memory.home_room) {
                 creep.memory.destLoc = {roomName: creep.memory.home_room};
                 utils.move_to(creep, this.find_repairs);

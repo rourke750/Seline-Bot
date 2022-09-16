@@ -52,7 +52,8 @@ var creepConstruction = {
                 if (newCreep != null) { // if new creep created add to list
                     utilscreep.add_creep(newCreep);
                 }
-            } else if (roomHarvesters.length < 4) {
+            } else if (roomHarvesters.length < 4 && roomHaulers.length == 0 && roomSmartHarvesters.length == 0) {
+                // dont spawn room harvesters if we have haulers and smart harvesters
                 const newCreep = roleHarvester.create_creep(spawn); 
                 if (newCreep != null) { // if new creep created add to list
                     utilscreep.add_creep(newCreep);
@@ -232,8 +233,8 @@ var creepConstruction = {
     handleBuildCanMiner(spawnsMapping) {
         // todo only after certain rcl do we want to start using can miners
         for (const roomName in Game.rooms) {
-            if (roomName != 'W7N7')
-                continue;
+            //if (roomName != 'W7N7')
+            //    continue;
             
             const room = Game.rooms[roomName];
             if (!room.controller || !room.controller.my)
@@ -241,12 +242,16 @@ var creepConstruction = {
             
             // now go through surronding rooms
             const exits = Game.map.describeExits(roomName);
+            const array = [];
             for (const k in exits) {
                 const oRoom = exits[k];
                 // check if we already own room
                 if (Game.rooms[oRoom] && Game.rooms[oRoom].controller && Game.rooms[oRoom].controller.my) {
                     continue;
                 }
+                // check if room is in our control
+                if (Memory.rooms[oRoom].eCP || Memory.rooms[oRoom].type == common.roomMapping.RESERVED)
+                    continue;
                 // get sources for the room
                 const sources = Memory.rooms[oRoom].sources;
                 for (const id in sources) {
@@ -254,20 +259,28 @@ var creepConstruction = {
                     const source = sources[id];
                     if (!source.canCreep) {
                         // we can spawn a can miner
-                        // go through the spawns
-                        for (const sK in spawnsMapping[roomName]) {
-                            const spawn = spawnsMapping[roomName][sK];
-                            const newCreep = roleCanHarvester.create_creep(spawn, id, oRoom);
-                            if (newCreep) {
-                                source.canCreep = newCreep.name;
-                                utilscreep.add_creep(newCreep);
-                                break;
-                            }
-                        }
-                        break; // todo remove
+                        array.push([id, oRoom]);
                     }
                 }
-                break; // todo remove
+            }
+            if (array.length == 0)
+                continue;
+            // go through the spawns
+            for (const sK in spawnsMapping[roomName]) {
+                if (array.length == 0)
+                    break;
+                const v = array.pop();
+                const spawn = spawnsMapping[roomName][sK];
+                if (spawn.spawning)
+                    continue;
+                const newCreep = roleCanHarvester.create_creep(spawn, v[0], v[1]);
+                if (newCreep) {
+                    const sources = Memory.rooms[v[1]].sources;
+                    const source = sources[v[0]];
+                    source.canCreep = newCreep.name;
+                    utilscreep.add_creep(newCreep);
+                    break;
+                }
             }
         }
     },
@@ -275,8 +288,8 @@ var creepConstruction = {
     handleBuildTransport: function(spawnsMapping) {
         // handle building a transport to pick up energy from a can miner
         for (const roomName in Game.rooms) {
-            if (roomName != 'W7N7')
-                continue;
+            //if (roomName != 'W7N7')
+            //    continue;
             
             const room = Game.rooms[roomName];
             if (!room.controller || !room.controller.my)

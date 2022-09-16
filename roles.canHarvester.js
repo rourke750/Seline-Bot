@@ -47,6 +47,19 @@ var roleCanHarvester = {
             return;
         }
 
+        // something derped and we lost the dst loc
+        if (!creep.memory.destLoc) {
+            const sources = Memory.rooms[creep.pos.roomName].sources;
+            for (const sK in sources) {
+                const source = sources[sK];
+                if (source.canCreep && source.canCreep == creep.name) {
+                    creep.memory.destId = sK; 
+                    creep.memory.destLoc = {roomName: creep.pos.roomName};
+                    break;
+                }
+            }
+        }
+
         const source = Game.getObjectById(creep.memory.destId);
         if (source == null || creep.room.name != creep.memory.destLoc.roomName) {
             // we are not in right room lets move
@@ -78,7 +91,7 @@ var roleCanHarvester = {
             let container = Game.getObjectById(id);
             if (!container && id) {
                 // check if we dont have a container but we have an id, need to clear cache
-                CONTAINER_LOOK_UP[roomName[sourceId]] = null;
+                CONTAINER_LOOK_UP[creep.memory.destLoc.roomName][creep.memory.destId] = null;
                 id = getContainer(creep.room.name, creep.memory.destId);
                 container = Game.getObjectById(id);
             }
@@ -105,7 +118,11 @@ var roleCanHarvester = {
 	create_creep: function(spawn, sourceId, roomName) {
         var newName = 'CanHarvester' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         spawn.spawnCreep(normal_creep, newName,
-            {memory: {role: common.creepRole.CAN_HARVESTER, destId: sourceId, destLoc: {roomName: roomName}}});
+            {memory: {
+                role: common.creepRole.CAN_HARVESTER, 
+                destId: sourceId, 
+                destLoc: {roomName: roomName}
+            }});
         if (Game.creeps[newName]) {
             return Game.creeps[newName];
         }

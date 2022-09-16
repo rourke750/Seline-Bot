@@ -1,4 +1,5 @@
 var utils = require('utils');
+var transport = require('transport');
 
 const normal_creep = [WORK, CARRY, MOVE];
 const big_creep = [WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE];
@@ -14,11 +15,22 @@ const build_creeps = [
 ]
 
 var roleUpgrader = {
+
+    moveOutOfWayNoEnergy: function(creep) {
+        if (creep.room.name == 'W1N1') {
+            return creep.room.controller;
+        }
+    },
     
     get_harvest_count: function(room) {
         // todo get the amount of repairs needed and spawn based on it
         if (room.controller && room.controller.my && room.controller.level < 8) {
-            return 6;
+            let storage = transport.getRoomInfo(room.name, false);
+            if (!storage)
+                return 1;
+            storage = storage.storage;
+            const carry = utils.get_creep_carry(build_creeps[room.memory.upgrade_pos_upgrader][1]);
+            return Math.max(Math.min(6, storage / carry), 1);
         }
         return 3;
     },
@@ -34,7 +46,7 @@ var roleUpgrader = {
         }
         
 	    if(!creep.memory.upgrading) {
-            if (!utils.harvest_source(creep)) {
+            if (!utils.harvest_source(creep, true, this.moveOutOfWayNoEnergy)) {
                 creep.memory.upgrading = true;
                 utils.cleanup_move_to(creep);
                 creep.memory.destId = Game.rooms[creep.memory.home_room].controller.id;
@@ -42,9 +54,10 @@ var roleUpgrader = {
         }
         
         const upgradeErr = creep.upgradeController(Game.rooms[creep.memory.home_room].controller)
-        if (creep.memory.destId == null) {
+        if (creep.memory.upgrading && creep.memory.destId == null) {
             creep.memory.destId = Game.rooms[creep.memory.home_room].controller.id;
         }
+        
         if(creep.memory.upgrading && upgradeErr == ERR_NOT_IN_RANGE) {
             utils.move_to(creep, this.get_main_upgrader);
         }

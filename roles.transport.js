@@ -48,7 +48,9 @@ const roleTransport = {
         if (!creep.memory.pickup) {
             utils.move_to(creep, findDropOff);
         } else {
-            utils.move_to(creep, () => Game.getObjectById(transport.getContainerFromSource(creep.memory.sourceId)));
+            // check if we have a source id
+            if (creep.memory.sourceId)
+                utils.move_to(creep, () => Game.getObjectById(transport.getContainerFromSource(creep.memory.sourceId)));
         }
 
         // can we pickup energy
@@ -63,9 +65,13 @@ const roleTransport = {
             const err = creep.withdraw(container, RESOURCE_ENERGY);
             if (err == ERR_NOT_IN_RANGE) {
                 return;
-            }
-            if (err != OK)
-                console.log('transport error withdrawing ', err);
+            } else if (err == ERR_NOT_ENOUGH_RESOURCES) {
+                utils.cleanup_move_to(creep);
+                creep.memory.destLoc = {roomName: creep.memory.home_room};
+                creep.memory.pickup = false;
+                creep.memory.sourceId = undefined;
+            } else if (err != OK)
+                console.log('transport error withdrawing ', creep.pos, err);
         }
 
         if (!creep.memory.pickup) {

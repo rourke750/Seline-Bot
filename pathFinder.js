@@ -1,4 +1,5 @@
 const os = require('os');
+var _ = require('lodash');
 
 const swampCostConst = 10;
 const plainCost = 2;
@@ -8,27 +9,37 @@ for (ob in OBSTACLE_OBJECT_TYPES) {
     obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
 }
 
-/*
-class DualCostMatrix {
-    constructor(a, b) {
-        this.a = a;
-        this.b = b;
-    }
-
-    get(x, y) {
-        console.log('herm pathfinder')
-        let aV = this.a.get(x, y);
-        let bV = this.b.get(x, y);
-        if (aV == 0) 
-            return aB;
-        else if (bV == 0) 
-            return aV;
-        return aV > bV ? aV : bV;
-    }
-}
-*/
+let destinationMappings = {}; // room to position to creeps
+let currentCreepMapping = {}; // room to current position to creeps
 
 const pathGenerator = {
+
+    solvePaths: function() {
+
+    },
+
+    registerCreepDst: function(creep, nextX, nextY) {
+        const roomName = creep.pos.roomName;
+        const dstKey = `${nextX}-${nextY}`;
+        if (!(roomName in destinationMappings)) // no room name
+            destinationMappings[roomName] = {};
+        if (!(dstKey in destinationMappings[roomName])) // no dstkey
+            destinationMappings[roomName][dstKey] = [];
+
+        const curKey = `${creep.pos.x}-${creep.pos.y}`;
+        if (!(roomName in currentCreepMapping)) // no room name
+            currentCreepMapping[roomName] = {};
+        if (!(curKey in currentCreepMapping[roomName])) // no dstkey
+            currentCreepMapping[roomName][curKey] = [];
+
+        destinationMappings[roomName][dstKey].push(creep);
+        currentCreepMapping[roomName][curKey].push(creep);
+    },
+
+    resetCreepDst: function() {
+        destinationMappings = {};
+        currentCreepMapping = {};
+    },
 
     find_path_in_room: function(creep, dstX, dstY, opts={maxOps:2000, avoidCreep: false}) {
         if (opts == null) {
@@ -464,3 +475,33 @@ const pathGenerator = {
     }
 };
 module.exports = pathGenerator;
+
+Creep.prototype.moveByPath = function(path) {
+    if(_.isArray(path) && path.length > 0 && (path[0] instanceof RoomPosition)) {
+        var idx = _.findIndex(path, (i) => i.isEqualTo(this.pos));
+        if(idx === -1) {
+            if(!path[0].isNearTo(this.pos)) {
+                return C.ERR_NOT_FOUND;
+            }
+        }
+        idx++;
+        if(idx >= path.length) {
+            return C.ERR_NOT_FOUND;
+        }
+
+        return this.move(this.pos.getDirectionTo(path[idx]));
+    }
+
+    if(_.isString(path)) {
+        path = Room.deserializePath(path);
+    }
+    if(!_.isArray(path)) {
+        return C.ERR_INVALID_ARGS;
+    }
+    var cur = _.find(path, (i) => i.x - i.dx == this.pos.x && i.y - i.dy == this.pos.y);
+    if(!cur) {
+        return ERR_NOT_FOUND;
+    }
+    //pathGenerator.registerCreepDst(this, cur.x, cur.y)
+    return this.move(cur.direction);
+};

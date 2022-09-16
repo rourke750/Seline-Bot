@@ -95,6 +95,12 @@ var utils = {
        return cost;
     },
 
+    get_creep_carry: function(body_parts) {
+        return _.sum(body_parts.map(function (b) {
+            return b == CARRY ? 50 : 0;
+        }));
+    },
+
     findStorage: function(creep) {
         if (creep.room.memory.spawnMaster == null) {
             return false;
@@ -273,8 +279,14 @@ var utils = {
             return true;
         }
     },
+
+    tempMoveTo: function(creep, dstObj) {
+        creep.memory.harvestHelper = true;
+        creep.memory.destId = dstObj.id;
+        this.move_to(creep);
+    },
     
-    harvest_source: function(creep, findNewOnEmpty=true) {
+    harvest_source: function(creep, findNewOnEmpty=true, moveAwayFunc=null) {
         if (creep.spawning) {
             return true;
         }
@@ -288,8 +300,26 @@ var utils = {
                 found = this.findContainer(creep);
             }
             if(!found && !this.find_source(creep)) {
+                if (moveAwayFunc) {
+                    const obj = moveAwayFunc(creep);
+                    if (obj)
+                        this.tempMoveTo(creep, obj);
+                }
                 return true;
             }
+        }
+        //todo this will unset and reset path every time, come up with some other logic to solve
+        // above logic sets dst id to controller and then since destid isnt null then it gets cleared here
+        if (creep.memory.harvestHelper) {
+            // check if we found a container or source
+            if (!this.findContainer(creep) && !this.find_source(creep)) {
+                // didnt find just move
+                this.move_to(creep);
+                return true;
+            }
+            // if its set and we made it here means we don't need to be out of way
+            creep.memory.harvestHelper = undefined;
+            creep.memory.current_path = null;
         }
         
         let position = creep.memory.destLoc;
@@ -460,11 +490,14 @@ var utils = {
                 const p = pathFinder.find_path_in_room(creep, finalDest.x, finalDest.y, {avoidCreep:true});
                 creep.memory.current_path[creep.room.name] = p;
             }
-            // handle room traversal while stuck
-            if (sePath != null && sePath == "" && creep.pos.roomName != v[2]) {
+            else if (sePath != null && sePath == "" && creep.pos.roomName != v[2]) {
+                // handle room traversal while stuck
                 console.log('utils handling path extension for ' + creep.name)
                 utils.cleanup_move_to(creep);
                 this.initialize_traverse_rooms(creep, v[2]); // recalculate
+            } else if (pickNewTargetIfStuck) {
+                const p = pathFinder.find_path_in_room(creep, v.x, v.y, {avoidCreep:true});
+                creep.memory.current_path[creep.room.name] = p;
             }
         }
 

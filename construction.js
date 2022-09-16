@@ -15,6 +15,7 @@ const wallRampartStructs = {};
 wallRampartStructs[STRUCTURE_RAMPART] = true;
 wallRampartStructs[STRUCTURE_WALL] = true;
 const towerStructs = {STRUCTURE_TOWER: true};
+const observerStructs = {STRUCTURE_OBSERVER: true};
 
 const roadMappings = {};
  
@@ -142,8 +143,11 @@ var construction = {
             }
         }
         //room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+1).createConstructionSite(STRUCTURE_ROAD);
-        if (!this.doesConstructionExistAndCantBuild(room, linkLoc, roadStructs))
+        if (!this.doesConstructionExistAndCantBuild(room, linkLoc, roadStructs)) {
             paths.push([room.memory.spawnMasterX, room.memory.spawnMasterY+1, STRUCTURE_ROAD]);
+        } else {
+            heapPaths.push([room.memory.spawnMasterX, room.memory.spawnMasterY+1]);
+        }
 
         // build roads around spawns
         const posOffset = [[0, 3], [-1, -2], [0, -1], [1, 4]]
@@ -152,8 +156,10 @@ var construction = {
             let positions = utils.buildLineDirection(room.memory.spawnMasterX + pOff[0], room.memory.spawnMasterY+pOff[1], i, 2)
             for (const ii in positions) {
                 const v = positions[ii];
-                if (this.doesConstructionExistAndCantBuild(room, v, roadStructs))
+                if (this.doesConstructionExistAndCantBuild(room, v, roadStructs)) {
+                    heapPaths.push([v[0], v[1]]);
                     continue;
+                }
                 //room.getPositionAt(v[0], v[1]).createConstructionSite(STRUCTURE_ROAD);
                 paths.push([v[0], v[1], STRUCTURE_ROAD]);
             }
@@ -176,6 +182,11 @@ var construction = {
         // build tower
         if (!this.doesConstructionExistAndCantBuild(room, [room.memory.spawnMasterX-4, room.memory.spawnMasterY], towerStructs)) {
             paths.push([room.memory.spawnMasterX-4, room.memory.spawnMasterY, STRUCTURE_TOWER]);
+        }
+
+        // build observer
+        if (!this.doesConstructionExistAndCantBuild(room, [room.memory.spawnMasterX-1, room.memory.spawnMasterY+5], observerStructs)) {
+            paths.push([room.memory.spawnMasterX-1, room.memory.spawnMasterY+5, STRUCTURE_OBSERVER]);
         }
 
         construction.saveRoadsToHeap(room.name, 'auxnearspawns', heapPaths)
@@ -849,9 +860,9 @@ var construction = {
         let count = room.find(FIND_CONSTRUCTION_SITES).length;
         
         for (const pK in pathsKeys) {
-            const pathKey = pathsKeys[pK];
             if (count >= common.maxConstructionsPerRoom) // break if we have constructed more than listed
                 break;
+            const pathKey = pathsKeys[pK];
             const paths = pathsArray[pathKey];
             for (let pKey = paths.length - 1; pKey >= 0; pKey--) {
                 if (count >= common.maxConstructionsPerRoom) // break if we have constructed more than listed
@@ -865,7 +876,7 @@ var construction = {
                 count++;
             }
             if (paths.length == 0) {
-                Memory.construction[roomName].paths[pathKey] = undefined;
+                delete Memory.construction[roomName].paths[pathKey];
             }
         }
     },

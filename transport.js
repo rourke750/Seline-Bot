@@ -33,7 +33,14 @@ if (!Memory.transport.roomToJobMapping) {
 
 const transport = {
 
+    getRoomInfo: function(name, stringify=true) {
+        if (stringify)
+            return JSON.stringify(roomInfo[name]);
+        return roomInfo[name];
+    },
+
     getTransportWant: function(rooms) {
+        // todo come back here and make this more dynamic
         let want = 0;
         for (const k in rooms) {
             const oRoom = rooms[k];
@@ -79,11 +86,15 @@ const transport = {
                     const sourceId = containerIdToSourceIdMapping[containerId];
                     const energyWant = creep.store.getFreeCapacity();
                     const sourceWant = Memory.rooms[oRoom].sources[sourceId].totalEnergyWant;
+                    if (container.store == null) {
+                        console.log('transport err with getcontainer ', creep.pos, oRoom, sourceId)
+                    }
                     if (energyWant + sourceWant < container.store.getUsedCapacity(RESOURCE_ENERGY)) {
                         creep.memory.destId = containerId;
                         creep.memory.destLoc = {roomName: oRoom};
-                        creep.memory.sourceId = sourceId;
+                        creep.memory.sourceId = sourceId; 
                         creep.memory.home_room = creep.room.name;
+                        Memory.rooms[oRoom].sources[sourceId].totalEnergyWant += energyWant;
                         return true;
                     }
                 }
@@ -112,9 +123,14 @@ const transport = {
         for (const roomName in containerMapping) {
             roomToContainerMapping[roomName] = [];
             for (const sourceName in containerMapping[roomName]) {
+                if (!(sourceName in Memory.rooms[roomName].sources)) {
+                    console.log('transport error ', roomName, sourceName)
+                }
                 if (!Memory.rooms[roomName].sources[sourceName].canCreep)
                     continue; // no can miner skip
                 const containerId = containerMapping[roomName][sourceName];
+                if (Game.getObjectById(containerId) instanceof ConstructionSite)
+                    continue; // if we are building a container we dont want it to count
                 // now take container id and map it to room
                 roomToContainerMapping[roomName].push(containerId);
                 containerIdToSourceIdMapping[containerId] = sourceName;
@@ -145,13 +161,16 @@ const transport = {
     handleTransportRooms: function(room) {
         let have = room.energyAvailable;
         let total = room.energyCapacityAvailable;
+        let storageTotal = 0;
         // add in container if it exists
         const containerPos = room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY+1);
         const containerId = roomUtils.doesStructureExist(containerPos, STRUCTURE_CONTAINER);
         if (containerId) {
             const container = Game.getObjectById(containerId);
             total += container.store.getCapacity();
-            have += container.store.getUsedCapacity(RESOURCE_ENERGY);
+            const c = container.store.getUsedCapacity(RESOURCE_ENERGY);
+            have += c;
+            storageTotal += c;
         }
 
         // add storage if it exists
@@ -160,13 +179,16 @@ const transport = {
         if (storageId) {
             const storage = Game.getObjectById(storageId);
             total += 500000;
-            have += storage.store.getUsedCapacity(RESOURCE_ENERGY);
+            const c = storage.store.getUsedCapacity(RESOURCE_ENERGY);
+            have += c;
+            storageTotal += c;
         }
         
         if (!(room.name in roomInfo))
             roomInfo[room.name] = {total:0, have:0};
         roomInfo[room.name].total = total;
         roomInfo[room.name].have = have;
+        roomInfo[room.name].storage = storageTotal;
     }
 };
 

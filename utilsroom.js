@@ -14,10 +14,10 @@ let closestRoomMappingTick = Game.time;
 var utilsroom = {
 
     doesStructureExist: function(pos, struct) {
-        const structs = pos.lookFor(LOOK_STRUCTURES).map(f => f.structureType);
+        const structs = pos.lookFor(LOOK_STRUCTURES);
         for (const s in structs) {
-            if (structs[s] == struct) {
-                structs[s].id;
+            if (structs[s].structureType == struct) {
+                return structs[s].id;
             }
         }
         return false;
@@ -33,7 +33,7 @@ var utilsroom = {
         // check if the mapping exists
         if (roomName in closestRoomMappingSpawn) {
             if (array)
-                closestRoomMappingSpawn[roomName];
+                return closestRoomMappingSpawn[roomName];
             return closestRoomMappingSpawn[roomName][0];
         }
         let mapping = [];
