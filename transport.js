@@ -60,6 +60,7 @@ const transport = {
                     // no can miner skip or no container yet or its a constructionsite
                     continue;
                 }
+                //todo calculate the amount of energy these source currently have
                 want += 1;
             }
         }

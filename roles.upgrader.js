@@ -17,9 +17,7 @@ const build_creeps = [
 var roleUpgrader = {
 
     moveOutOfWayNoEnergy: function(creep) {
-        if (creep.room.name == 'W1N1') {
-            return creep.room.controller;
-        }
+        return creep.room.controller;
     },
     
     get_harvest_count: function(room) {

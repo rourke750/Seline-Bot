@@ -8,6 +8,7 @@ const ROOM_TYPE = {
 const CREEP_ROLE = {
     CAN_HARVESTER: 'canHarvester',
     TRANSPORT: 'transport',
+    JANITOR: 'janitor'
 }
 
 const CONSTRUCTION_PRIORITY = {

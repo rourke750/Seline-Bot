@@ -10,6 +10,7 @@ const roleHauler = require('roles.hauler');
 const roleScout = require('roles.scout');
 const roleCanHarvester = require('roles.canHarvester');
 const roleTransport = require('roles.transport');
+const roleJanitor = require('roles.janitor');
 
 const militaryClaimer = require('military.claimer');
 const militaryDefender = require('military.defender');
@@ -62,8 +63,7 @@ var creepConstruction = {
                 //todo move below code where it filters on home_room to utils package where we can cache per tick
                 // todo doesnt make sense that we are doing this for every spawn remove
                 const roomUpgraders = utilscreep.get_role_home_filtered_creeps(roomName, 'upgrader');
-                const roomBuilders = utilscreep.get_role_home_filtered_creeps(roomName, 'builder');
-                const roomRepairers = utilscreep.get_role_home_filtered_creeps(roomName, 'repairer');
+                const roomJanitors = utilscreep.get_role_home_filtered_creeps(roomName, common.creepRole.JANITOR);
                 const claimers = utilscreep.get_filtered_creeps('claimer');
                 if (roomUpgraders.length == 0) {
                     const newCreep = roleUpgrader.create_creep(spawn);
@@ -74,16 +74,14 @@ var creepConstruction = {
                 }
                 // Now we want to see what percent of everything else is available and spawn accordingly
                 const upgraderPer = utils.notZero((roomUpgraders.length / roleUpgrader.get_harvest_count(spawn.room)));
-                const buildersPer = utils.notZero((roomBuilders.length / roleBuilder.get_harvest_count(spawn.room)));
-                const repairerPer = utils.notZero((roomRepairers.length / roleRepairer.get_harvest_count(spawn.room)));
+                const janitorsPer = utils.notZero((roomJanitors.length / roleJanitor.get_harvest_count(spawn.room)));
                 const claimersPer = utils.notZero((claimers.length / utils.get_claimer_count()));
                 const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / smartCount));
                 const haulersPerr = utils.notZero((roomHaulers.length / roleHauler.get_harvest_count(spawn.room)));
                 
                 const nextCreate = [
                     [upgraderPer, roleUpgrader],
-                    [buildersPer, roleBuilder],
-                    [repairerPer, roleRepairer],
+                    [janitorsPer, roleJanitor],
                     [claimersPer, militaryClaimer],
                     [smartHarvesterPerr, roleSmartHarvester],
                     [haulersPerr, roleHauler]

@@ -255,7 +255,7 @@ var utils = {
                 }
             }
             if (indexPosition == -1) {
-                console.log('wtf index position -1 ' + source.id)
+                //console.log('wtf index position -1 ' + source.id)
                 // let's go now and clear all indexes
                 for (const mK in memoryPosition) {
                     occupiedPosition[mK] = 0;
@@ -296,7 +296,7 @@ var utils = {
             // lets see if its a type that we want to get from the container
             let found = false;
             const role = creep.memory.role;
-            if (role === 'builder' || role === 'upgrader' || role === 'repairer') {
+            if (role === 'builder' || role === 'upgrader' || role === 'repairer' || role === 'janitor') {
                 found = this.findContainer(creep);
             }
             if(!found && !this.find_source(creep)) {
@@ -416,7 +416,7 @@ var utils = {
         }
         const obj = Game.getObjectById(creep.memory.destId);
         if (obj == null) {
-            console.log('utils move to helper' + creep.name + ' ' + creep.pos + ' ' + creep.memory.destId)
+            //console.log('utils move to helper' + creep.name + ' ' + creep.pos + ' ' + creep.memory.destId)
             return null;
         }
         return [obj.pos.x, obj.pos.y, obj.pos.roomName];
@@ -455,7 +455,7 @@ var utils = {
         // hanldes destinations even in other rooms
         const v = this.move_to_helper(creep);
         if (v == null) {
-            console.log('utils creep ' + creep.name + ' has null destination, quitting');
+            //console.log('utils creep ' + creep.name + ' has null destination, quitting');
             return;
         }
         if (creep.memory.current_path == null || creep.memory.current_path == undefined) {
@@ -537,7 +537,7 @@ var utils = {
             p = creep.memory.current_path[creep.pos.roomName];
         }
         
-        if (creep.fatigue == 0) {
+        if (creep.fatigue == 0 && p != null) {
             const errCode = creep.moveByPath(p);
             creep.memory.last_pos = creep.pos;
             creep.memory.last_pos_time = Game.time;
@@ -560,9 +560,11 @@ var utils = {
                 console.log(creep.name + ' error with creep moving ' + errCode + ' ' + creep.pos)
             }
         }
+        /*
         if (p != null)
             new RoomVisual(creep.room.name).poly(Room.deserializePath(p), {stroke: '#fff', strokeWidth: .15,
                 opacity: .2, lineStyle: 'dashed'});
+        */
     },
     
     cleanup_move_to: function(creep) {

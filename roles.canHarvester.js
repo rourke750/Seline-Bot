@@ -105,6 +105,11 @@ var roleCanHarvester = {
                 // repair
                 creep.repair(container);
             } else {
+                // check if we are in reserved room
+                if (creep.room.memory.type == common.roomMapping.RESERVED) {
+                    // room is currently reserved by not us
+                    return;
+                }
                 // can we harvest
                 const hErr = creep.harvest(source);
                 if (hErr != OK && hErr != ERR_NOT_ENOUGH_RESOURCES) {

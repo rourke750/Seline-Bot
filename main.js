@@ -7,6 +7,7 @@ const roleHauler = require('roles.hauler');
 const roleScout = require('roles.scout');
 const roleCanHarvester = require('roles.canHarvester');
 const roleTransport = require('roles.transport');
+const roleJanitor = require('roles.janitor');
 
 const militaryClaimer = require('military.claimer');
 const militaryDefender = require('military.defender');
@@ -47,6 +48,7 @@ const creepMapping = {
     'scout' : roleScout,
     'canHarvester': roleCanHarvester,
     'transport': roleTransport,
+    'janitor': roleJanitor,
 }
 
 global.utils = utils;
@@ -208,28 +210,40 @@ function loopSpawns() {
     }
 }
 
+let errorStacks = {};
+
 function handleCreeps() {
     let name = 'main-handle-creep-running'
     if (!os.existsThread(name)) {
         const f = function() {
             for(var i in Memory.creeps) {
                 if(!Game.creeps[i]) {
-                    creepMapping[Memory.creeps[i].role].cleanUp(i);
+                    if (Memory.creeps[i].role)
+                        creepMapping[Memory.creeps[i].role].cleanUp(i);
                     delete Memory.creeps[i];
                 }
             }
 
             // reset creep pos
             pathFinder.resetCreepDst();
-            
             for(var name in Game.creeps) {
                 var creep = Game.creeps[name];
                 var role = creep.memory.role;
                 if (role == null || role == undefined) {
                     console.log(creep.name + ' ' + role + ' has an undefined role? ' + creep.pos);
+                    // well can't do shit with it
+                    creep.suicide();
                     continue;
                 }
-                creepMapping[role].run(creep);
+                try {
+                    creepMapping[role].run(creep);
+                } catch (error) {
+                    if (!(error.stack in errorStacks)) {
+                        Game.notify(error.stack);
+                        errorStacks[error.stack] = true;
+                        console.log(error.stack);
+                    }
+                }
             }
             // try move creeps
             pathFinder.solvePaths();
@@ -266,7 +280,10 @@ function exportStats() {
       gcl: {},
       rooms: {},
       cpu: {},
+      creeps: {},
       os: os.getStats(),
+      heap: {},
+      memory: {},
     };
   
     Memory.stats.time = Game.time;
@@ -286,6 +303,12 @@ function exportStats() {
         roomStats.controllerLevel         = room.controller.level;
       }
     }
+
+    // heap data
+    Memory.stats.heap              = Game.cpu.getHeapStatistics();
+
+    // collect creeper count
+    Memory.stats.creeps.count      = Object.keys(Game.creeps).length;
   
     // Collect GCL stats
     Memory.stats.gcl.progress      = Game.gcl.progress;
@@ -305,6 +328,7 @@ function wrapWithMemoryHack(fn) {
     let memory;
     let tick;
     let lastSerializeTime = undefined;
+    let lastMemSize = undefined;
   
     return () => {
         if (tick && tick + 1 === Game.time && memory) {
@@ -331,9 +355,15 @@ function wrapWithMemoryHack(fn) {
     
         // this implementation uses the official way of saving Memory
         Memory.stats.cpu.memorySerialize = lastSerializeTime;
+        //Memory.stats.memory.size = lastMemSize;
+        
         let s = Game.cpu.getUsed();
         const ser = JSON.stringify(Memory);
+
+        // set last serialize time and mem size
         lastSerializeTime = Game.cpu.getUsed() - s;
+        //lastMemSize = new Blob([ser]).size;
+              
         RawMemory.set(ser);
     };
 };

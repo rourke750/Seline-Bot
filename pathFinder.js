@@ -11,14 +11,41 @@ for (ob in OBSTACLE_OBJECT_TYPES) {
 
 let destinationMappings = {}; // room to position to creeps
 let currentCreepMapping = {}; // room to current position to creeps
+let dirCreep = {}; // creep to dir
+let pathCreep = {}; // creep to path for drawing
 
 const pathGenerator = {
 
-    solvePaths: function() {
+    moveCreep: function(creep) {
+        const dir = dirCreep[creep.name];
+        const p = pathCreep[creep.name];
 
+        if (creep.fatigue == 0) {
+            creep.move(dir);
+        }
+        if (p != null)
+            new RoomVisual(creep.room.name).poly(p, {stroke: '#fff', strokeWidth: .15,
+                opacity: .2, lineStyle: 'dashed'});
     },
 
-    registerCreepDst: function(creep, nextX, nextY) {
+    solvePaths: function() {
+        for (const roomName in destinationMappings) {
+            const creepPositions = currentCreepMapping[roomName];
+            for (const position in destinationMappings[roomName]) {
+                const array = position.split('-');
+                const x = array[0];
+                const y = array[1];
+                const creeps = destinationMappings[roomName][position];
+                for (const creepK in creeps) {
+                    const creepName = creeps[creepK];
+                    const creep = Game.creeps[creepName];
+                    this.moveCreep(creep);
+                }
+            }
+        }
+    },
+
+    registerCreepDst: function(creep, nextX, nextY, dir, path) {
         const roomName = creep.pos.roomName;
         const dstKey = `${nextX}-${nextY}`;
         if (!(roomName in destinationMappings)) // no room name
@@ -32,13 +59,17 @@ const pathGenerator = {
         if (!(curKey in currentCreepMapping[roomName])) // no dstkey
             currentCreepMapping[roomName][curKey] = [];
 
-        destinationMappings[roomName][dstKey].push(creep);
-        currentCreepMapping[roomName][curKey].push(creep);
+        destinationMappings[roomName][dstKey].push(creep.name);
+        currentCreepMapping[roomName][curKey].push(creep.name);
+        dirCreep[creep.name] = dir;
+        pathCreep[creep.name] = path;
     },
 
     resetCreepDst: function() {
         destinationMappings = {};
         currentCreepMapping = {};
+        dirCreep = {};
+        pathCreep = {};
     },
 
     find_path_in_room: function(creep, dstX, dstY, opts={maxOps:2000, avoidCreep: false}) {
@@ -502,6 +533,7 @@ Creep.prototype.moveByPath = function(path) {
     if(!cur) {
         return ERR_NOT_FOUND;
     }
-    //pathGenerator.registerCreepDst(this, cur.x, cur.y)
-    return this.move(cur.direction);
+    pathGenerator.registerCreepDst(this, cur.x, cur.y, cur.direction, path);
+    //return this.move(cur.direction);
+    return 0;
 };
