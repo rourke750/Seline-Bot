@@ -181,6 +181,8 @@ var roleRepairer = {
         if (room.controller.level == 0) {
             return;
         }
+        if (energy_available == 0 && build_creeps[room.memory.upgrade_pos_janitor][0] == 0)
+            return;
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_repairer][2];
         if (current_upgrade_cost > energy_available) {
             // attacked need to downgrade

@@ -240,6 +240,7 @@ var expansion = {
                 roomNames.push(k);
             }
         }
+        
         if (roomCount >= Game.gcl.level) {
             Memory.flags.captureAuto = {};
             return; // room count is max nothing to do

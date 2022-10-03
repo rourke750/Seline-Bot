@@ -2,7 +2,6 @@ var utils = require('utils');
 const utilscreep = require('utilscreep');
 const common = require('common');
 
-//const normal_creep = [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
 const normal_creep = [WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE, MOVE];
 
 const CONTAINER_LOOK_UP = {}; // mapping of rooms to sources to container ids
@@ -11,6 +10,11 @@ function getContainer(roomName, sourceId) {
     // check if container exists in mapping if not load it, if not created return null;
     if (!(roomName in CONTAINER_LOOK_UP))
         CONTAINER_LOOK_UP[roomName] = {};
+        
+    if (CONTAINER_LOOK_UP[roomName][sourceId] && !Game.getObjectById(CONTAINER_LOOK_UP[roomName][sourceId])) {
+        // we have a container look up but the object doesnt exist reset
+        CONTAINER_LOOK_UP[roomName][sourceId] = null;
+    }
 
     if (!(sourceId in CONTAINER_LOOK_UP[roomName])) {
         // try find it
@@ -121,7 +125,7 @@ var roleCanHarvester = {
 	},
 	
 	create_creep: function(spawn, sourceId, roomName) {
-        var newName = 'CanHarvester' + Game.time + spawn.name.charAt(spawn.name.length - 1);
+        var newName = 'CanHarvester' + roomName + '-' + spawn.name + '-' + Game.time;
         spawn.spawnCreep(normal_creep, newName,
             {memory: {
                 role: common.creepRole.CAN_HARVESTER, 

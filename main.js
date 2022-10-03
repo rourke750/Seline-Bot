@@ -57,6 +57,8 @@ global.os = os;
 global.military = military;
 global.commands = commands;
 global.transport = transport;
+global.utilsroom = utilsroom;
+global.utilscreep = utilscreep;
 
 function handleFlags() {
     const m = Memory['flags'];
@@ -205,6 +207,15 @@ function loopSpawns() {
         const f = function() {
             const mapping = utilscreep.getRoomToSpawnMapping();
             creepConstruction.handleBuildTransport(mapping);
+        }
+        os.newThread(name, f, 10);
+    }
+
+    name = 'main-handle-creep-spawning-capture'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = utilscreep.getRoomToSpawnMapping();
+            creepConstruction.handleBuildClaimer(mapping);
         }
         os.newThread(name, f, 10);
     }

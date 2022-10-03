@@ -44,8 +44,8 @@ var utilsroom = {
         mapping.sort((a, b) => a.d - b.d)
         mapping = mapping.map(f => f.name);
         closestRoomMappingSpawn[roomName] = mapping;
-        if (array)
-            closestRoomMappingSpawn[roomName];
+        if (array) 
+            return closestRoomMappingSpawn[roomName];
         return closestRoomMappingSpawn[roomName][0];
     },
 
@@ -94,7 +94,7 @@ var utilsroom = {
                                 //console.log('utilsroom upgrade rooms room is empty ' + roomName + ' ' + room);
                                 return; 
                             }
-                            if (!room.controller || !room.controller.my || room.energyCapacityAvailable == 0) {
+                            if (!room.controller || !room.controller.my) {
                                 return;
                             }
                             creepMapping[role].upgrade(room);

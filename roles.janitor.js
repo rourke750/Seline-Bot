@@ -137,17 +137,17 @@ const roleJanitor = {
 
     findCombined: function(creep) {
         // look for construction sites first
-        const con = this.findConstructSite(creep);
+        const con = roleJanitor.findConstructSite(creep);
         // if none exist return repairs
         if (!con)
-            return this.find_repairs(creep);
+            return roleJanitor.find_repairs(creep);
         // otherwise randomly pick one or the other
         if (Math.floor(Math.random * 2) == 1 && con) {
             // if equal to 1 return con if they exist
             return con;
         } 
         // lets try send a repair
-        const repair = this.find_repairs(creep);
+        const repair = roleJanitor.find_repairs(creep);
         // if a repair exists return repair
         if (repair)
             return repair;
@@ -196,7 +196,7 @@ const roleJanitor = {
                 if (source == null) {
                     utils.cleanup_move_to(creep);
                 }
-                else if (source.hits != null) {
+                else {
                     let err = null;
                     const con = source instanceof ConstructionSite;
                     // check if source type constructionsite
@@ -205,7 +205,7 @@ const roleJanitor = {
                     else
                         err = creep.repair(source);
                     if (err == ERR_NOT_IN_RANGE) {
-                        utils.move_to(creep, this.find_repairs);
+                        utils.move_to(creep, this.findCombined);
                     } else if (err == ERR_INVALID_TARGET) {
                         utils.cleanup_move_to(creep);
                     }
@@ -237,6 +237,8 @@ const roleJanitor = {
         if (room.controller.level == 0) {
             return;
         }
+        if (energy_available == 0 && build_creeps[room.memory.upgrade_pos_janitor][0] == 0)
+            return;
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_janitor][2];
         if (current_upgrade_cost > energy_available) {
             // attacked need to downgrade

@@ -858,7 +858,6 @@ var construction = {
             return aa - bb;
         });
         let count = room.find(FIND_CONSTRUCTION_SITES).length;
-        
         for (const pK in pathsKeys) {
             if (count >= common.maxConstructionsPerRoom) // break if we have constructed more than listed
                 break;
@@ -877,6 +876,37 @@ var construction = {
             }
             if (paths.length == 0) {
                 delete Memory.construction[roomName].paths[pathKey];
+            }
+        }
+    },
+
+    destructOldBase: function() {
+        for (const roomName in Game.rooms) {
+            const room = Game.rooms[roomName];
+            if (!room.controller || !room.controller.my)
+                continue;
+            const enemyStructs = room.find(FIND_HOSTILE_STRUCTURES);
+            for (const s in enemyStructs) {
+                const struct = enemyStructs[s];
+                struct.destroy();
+            }
+        }
+    },
+
+    destoryConstructionSitesOnImpossibleLocations: function() {
+        for (const id in Game.constructionSites) {
+            const con = Game.constructionSites[id];
+            const pos = con.pos;
+            const structs = pos.lookFor(LOOK_STRUCTURES);
+            for (const k in structs) {
+                const struct = structs[k];
+                if (struct.structureType in obsticalD) {
+                    // we have a construction site but we have a structure thats already there and cant be walked on, delete it
+                    con.remove();
+                    Game.notify(`Deleting construction site ${con.structureType} at ${pos} since ${struct.structureType}
+                     was already there`);
+                    break;
+                }
             }
         }
     },
@@ -915,7 +945,7 @@ var construction = {
             os.newTimedThread(name, f, 10, 1, 30); // spawn a new timed thread that runs every 30 ticks
         }
 
-        name = 'construction-' + room.name + '-build_walls_and_ramparts'
+        name = 'construction-' + room.name + '-build_walls_and_ramparts';
         if (!os.existsThread(name)) {
             const f = function() {
                 construction.buildWallsAndRamparts(roomName);
@@ -924,12 +954,28 @@ var construction = {
             //os.newThread(name, f, 10);
         }
 
-        name = 'construction-' + room.name + '-construct_from_memory'
+        name = 'construction-' + room.name + '-construct_from_memory';
         if (!os.existsThread(name)) {
             const f = function() {
                 construction.buildConstructionFromMemory(roomName);
             }
             os.newTimedThread(name, f, 10, 1, 20);
+        }
+
+        name = 'construction-delete-old-structs';
+        if (!os.existsThread(name)) {
+            const f = function() {
+                construction.destructOldBase(roomName);
+            }
+            os.newTimedThread(name, f, 10, 1, 100);
+        }
+
+        name = 'construction-delete-bad-constructions';
+        if (!os.existsThread(name)) {
+            const f = function() {
+                construction.destoryConstructionSitesOnImpossibleLocations(roomName);
+            }
+            os.newTimedThread(name, f, 20, 1, 100);
         }
     }
 }

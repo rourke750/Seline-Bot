@@ -21,6 +21,8 @@ const common = require('common');
 
 const transport = require('transport');
 
+const pathFinder = require('pathFinder');
+
 var creepConstruction = {
     handle_build_order: function(spawnsMapping, roomName) {
         // exit if the room isnt ours
@@ -64,7 +66,6 @@ var creepConstruction = {
                 // todo doesnt make sense that we are doing this for every spawn remove
                 const roomUpgraders = utilscreep.get_role_home_filtered_creeps(roomName, 'upgrader');
                 const roomJanitors = utilscreep.get_role_home_filtered_creeps(roomName, common.creepRole.JANITOR);
-                const claimers = utilscreep.get_filtered_creeps('claimer');
                 if (roomUpgraders.length == 0) {
                     const newCreep = roleUpgrader.create_creep(spawn);
                     if (newCreep != null) { // if new creep created add to list
@@ -75,14 +76,12 @@ var creepConstruction = {
                 // Now we want to see what percent of everything else is available and spawn accordingly
                 const upgraderPer = utils.notZero((roomUpgraders.length / roleUpgrader.get_harvest_count(spawn.room)));
                 const janitorsPer = utils.notZero((roomJanitors.length / roleJanitor.get_harvest_count(spawn.room)));
-                const claimersPer = utils.notZero((claimers.length / utils.get_claimer_count()));
                 const smartHarvesterPerr = utils.notZero((roomSmartHarvesters.length / smartCount));
                 const haulersPerr = utils.notZero((roomHaulers.length / roleHauler.get_harvest_count(spawn.room)));
                 
                 const nextCreate = [
                     [upgraderPer, roleUpgrader],
                     [janitorsPer, roleJanitor],
-                    [claimersPer, militaryClaimer],
                     [smartHarvesterPerr, roleSmartHarvester],
                     [haulersPerr, roleHauler]
                 ];
@@ -231,12 +230,15 @@ var creepConstruction = {
     handleBuildCanMiner(spawnsMapping) {
         // todo only after certain rcl do we want to start using can miners
         for (const roomName in Game.rooms) {
-            //if (roomName != 'W7N7')
-            //    continue;
             
             const room = Game.rooms[roomName];
             if (!room.controller || !room.controller.my)
                 continue; // don't build can miners from rooms i don't own
+
+            // check if the room has smart harvesters, if there are no smart harvesters prob dont want can miners
+            const roomSmartHarvesters = utilscreep.get_role_home_filtered_creeps(roomName, 'smartHarvester');
+            if (roomSmartHarvesters.length == 0)
+                continue;
             
             // now go through surronding rooms
             const exits = Game.map.describeExits(roomName);
@@ -267,10 +269,10 @@ var creepConstruction = {
             for (const sK in spawnsMapping[roomName]) {
                 if (array.length == 0)
                     break;
-                const v = array.pop();
                 const spawn = spawnsMapping[roomName][sK];
                 if (spawn.spawning)
                     continue;
+                const v = array.pop();
                 const newCreep = roleCanHarvester.create_creep(spawn, v[0], v[1]);
                 if (newCreep) {
                     const sources = Memory.rooms[v[1]].sources;
@@ -317,6 +319,50 @@ var creepConstruction = {
                 }
                 if (total >= want)
                     break;
+            }
+        }
+    },
+
+    handleBuildClaimer: function(spawnsMapping) {
+        const claims = Object.keys(Memory.flags.captureAuto);
+        if (claims.length == 0)
+            return;
+        const dstRoom = claims[0];
+        if (Object.keys(Memory.flags.captureAuto[dstRoom]).length > 0)
+            return; // we already claiming
+        
+        // now let's try spawn a claim
+        // we want to try find closest and that is able to reach
+        
+        const spawnRooms = utilsroom.getClosestRoomFromRoom(spawnsMapping, dstRoom, true);
+        if (spawnRooms.length == 0) {
+            // todo if this happens pick a new spawn room, nothing can be done
+            console.log('creepConstruction, yikes this aint good, need to write code buddy');
+            return
+        }
+        let max = 3;
+        let cheapest = null;
+        for (const r in spawnRooms) {
+            const spawn = spawnsMapping[spawnRooms[r]];
+            const paths = pathFinder.find_highway(spawn[0].pos, dstRoom);
+            let length = 0;
+            for (const k in paths[0]) {
+                length += Room.deserializePath(paths[0][k]).length;
+            }
+            if (!cheapest || length < cheapest[0]) {
+                cheapest = [length, spawnRooms[r]];
+            }
+            if (--max == 0)
+                break;
+        }
+
+        // Now try spawn claimer
+        for (const sK in spawnsMapping[cheapest[1]]) {
+            const spawn = spawnsMapping[cheapest[1]][sK];
+            const newCreep = militaryClaimer.create_creep(spawn);
+            if (newCreep) {
+                utilscreep.add_creep(newCreep);
+                break;
             }
         }
     }

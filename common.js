@@ -18,7 +18,7 @@ const CONSTRUCTION_PRIORITY = {
 
 const common = {
     roomMapping: ROOM_TYPE,
-    maxConstructionsPerRoom: 5,
+    maxConstructionsPerRoom: 2,
     username: 'rourke750',
 
     constructionPriority: CONSTRUCTION_PRIORITY,
