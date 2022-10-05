@@ -537,34 +537,11 @@ var utils = {
             p = creep.memory.current_path[creep.pos.roomName];
         }
         
-        if (creep.fatigue == 0 && p != null) {
+        if (p != null) {
             const errCode = creep.moveByPath(p);
             creep.memory.last_pos = creep.pos;
             creep.memory.last_pos_time = Game.time;
-            if (errCode == ERR_NOT_FOUND) {
-                return;
-                //creep.memory.current_path = {};
-                if (v[2] != creep.room.name) {
-                    if (creep.name.startsWith('Scout')) {
-                        console.log('beep8')
-                    }
-                    this.cleanup_move_to(creep);
-                    return;
-                }
-                p = pathFinder.find_path_in_room(creep, v[0], v[1]);
-                creep.memory.current_path[creep.roomName] = p;
-            } else if (errCode == ERR_INVALID_ARGS) {
-                this.cleanup_move_to(creep);
-            }
-            else if (errCode != 0) {
-                console.log(creep.name + ' error with creep moving ' + errCode + ' ' + creep.pos)
-            }
         }
-        /*
-        if (p != null)
-            new RoomVisual(creep.room.name).poly(Room.deserializePath(p), {stroke: '#fff', strokeWidth: .15,
-                opacity: .2, lineStyle: 'dashed'});
-        */
     },
     
     cleanup_move_to: function(creep) {

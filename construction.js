@@ -622,11 +622,6 @@ var construction = {
     },
 
     buildWallsAndRamparts: function(roomName) {
-        if (roomName != "W3N7") {
-            return;
-        }
-        return;
-
         if (construction.doesMemoryExistConstructon(roomName, 'wallsAndRamparts')) {
             return;
         }
@@ -897,6 +892,8 @@ var construction = {
         for (const id in Game.constructionSites) {
             const con = Game.constructionSites[id];
             const pos = con.pos;
+            if (!con.room)
+                continue;
             const structs = pos.lookFor(LOOK_STRUCTURES);
             for (const k in structs) {
                 const struct = structs[k];

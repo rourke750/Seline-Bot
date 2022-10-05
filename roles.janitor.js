@@ -193,6 +193,10 @@ const roleJanitor = {
             
             if (creep.memory.destId != null) {
                 const source = Game.getObjectById(creep.memory.destId);
+                if (source != null && (source instanceof StructureWall || source instanceof StructureRampart) && source.hits > 3000) {
+                    utils.cleanup_move_to(creep);
+                }
+
                 if (source == null) {
                     utils.cleanup_move_to(creep);
                 }
@@ -202,7 +206,7 @@ const roleJanitor = {
                     // check if source type constructionsite
                     if (con)
                         err = creep.build(source);
-                    else
+                    else 
                         err = creep.repair(source);
                     if (err == ERR_NOT_IN_RANGE) {
                         utils.move_to(creep, this.findCombined);
