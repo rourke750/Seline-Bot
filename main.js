@@ -8,6 +8,7 @@ const roleScout = require('roles.scout');
 const roleCanHarvester = require('roles.canHarvester');
 const roleTransport = require('roles.transport');
 const roleJanitor = require('roles.janitor');
+const roleFake = require('roles.fake');
 
 const militaryClaimer = require('military.claimer');
 const militaryDefender = require('military.defender');
@@ -49,6 +50,7 @@ const creepMapping = {
     'canHarvester': roleCanHarvester,
     'transport': roleTransport,
     'janitor': roleJanitor,
+    'fake': roleFake,
 }
 
 global.utils = utils;

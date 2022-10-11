@@ -48,6 +48,8 @@ const transport = {
             if (Game.rooms[oRoom] && Game.rooms[oRoom].controller && Game.rooms[oRoom].controller.my) {
                 continue;
             }
+            if (!(oRoom in Memory.rooms))
+                continue;
             // get sources for the room
             const sources = Memory.rooms[oRoom].sources;
             for (const id in sources) {

@@ -2,6 +2,8 @@ var utils = require('utils');
  
 var militaryTower = {
    run: function(room) {
+      if (!Memory.allies)
+         Memory.allies = {};
       const towers = room.find(FIND_MY_STRUCTURES, {
          filter: { structureType: STRUCTURE_TOWER }
       });

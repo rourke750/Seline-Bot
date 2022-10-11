@@ -3,10 +3,7 @@ const common = require('common');
 const pathFinder = require('pathFinder');
 const os = require('os');
 
-const obsticalD = {};
-for (ob in OBSTACLE_OBJECT_TYPES) {
-    obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
-}
+const obsticalD = common.obsticalD;
 const roadStructs = {};
 roadStructs[STRUCTURE_ROAD] = true;
 const containerStructs = {};
@@ -287,6 +284,17 @@ var construction = {
         }
         return false;
     },
+
+    build_container_near_controller: function(roomName) {
+        const room = Game.rooms(roomName);
+        if (!source.room.controller || !source.room.controller.my) {
+            return;
+        }
+
+        if (source.room.controller.level < 8) {
+            return
+        }
+    },
     
     build_link_near_sources: function(source) {
         /* goal of this method is to build a link that will match up with with a source and is close to the spawn, 
@@ -309,19 +317,21 @@ var construction = {
         }
         
         // check the building if its finished
-        const structs = source.room.lookForAt(
-            LOOK_STRUCTURES, Memory.rooms[source.room.name].sources[source.id].container_x, 
-            Memory.rooms[source.room.name].sources[source.id].container_y).map(f => f.structureType);
-        var found = false
-        for (const s in structs) {
-            if (structs[s] == STRUCTURE_LINK) {
-                found = true;
-                break;
+        if (Memory.rooms[source.room.name].sources[source.id].container_x) {
+            const structs = source.room.lookForAt(
+                LOOK_STRUCTURES, Memory.rooms[source.room.name].sources[source.id].container_x, 
+                Memory.rooms[source.room.name].sources[source.id].container_y).map(f => f.structureType);
+            var found = false
+            for (const s in structs) {
+                if (structs[s] == STRUCTURE_LINK) {
+                    found = true;
+                    break;
+                }
             }
+            Memory.rooms[source.room.name].sources[source.id].finished = found;
+            if (found)
+                return;
         }
-        Memory.rooms[source.room.name].sources[source.id].finished = found;
-        if (found)
-            return;
         
         //todo change the above logic where only if it is found does the below code not run
         
@@ -716,7 +726,7 @@ var construction = {
             }
 
             // generate an exit if one doesn't exist in order for the rampart to be placed
-            if (!(eK in Memory.highway[roomName].exits)) {
+            if (!Memory.highway || !(roomName in Memory.highway) || !(eK in Memory.highway[roomName].exits)) {
                 pathFinder.find_highway(room.getPositionAt(room.memory.spawnMasterX, room.memory.spawnMasterY), exits[eK]);
             }
             // we will discover where to place rampart based on the location of the path from spawn to exit

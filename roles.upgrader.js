@@ -7,6 +7,10 @@ const bigger_creep = [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, 
 const biggerr_creep = [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, 
     CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE];
 
+const rcl_8 = [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK,
+    CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, 
+    MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE];
+
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)],
     [1, big_creep, utils.get_creep_cost(big_creep)],
@@ -27,10 +31,10 @@ var roleUpgrader = {
             if (!storage)
                 return 1;
             storage = storage.storage;
-            const carry = utils.get_creep_carry(build_creeps[room.memory.upgrade_pos_upgrader][1]);
+            const carry = utils.get_creep_carry(build_creeps[room.memory.upgrade_pos_upgrader || 0][1]);
             return Math.max(Math.min(6, storage / carry), 1);
         }
-        return 3;
+        return 2;
     },
     
     get_main_upgrader: function(creep) {
@@ -63,7 +67,10 @@ var roleUpgrader = {
 	
 	create_creep: function(spawn) {
         var newName = 'Upgrader' + Game.time + spawn.name.charAt(spawn.name.length - 1);
-        spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_upgrader][1], newName,
+        let b = build_creeps[spawn.room.memory.upgrade_pos_upgrader][1];
+        if (spawn.room.controller.level == 8)
+            b = rcl_8;
+        spawn.spawnCreep(b, newName,
             {memory: {role: 'upgrader', upgrading: false, home_room: spawn.room.name}});
         if (Game.creeps[newName]) {
             return Game.creeps[newName];

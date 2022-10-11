@@ -178,7 +178,7 @@ var roleHauler = {
             return;
         }
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_smart_hauler][2];
-        if (current_upgrade_cost > energy_available && room.memory.upgrade_pos_scout != 0) {
+        if (current_upgrade_cost > energy_available && room.memory.upgrade_pos_smart_hauler != 0) {
             // attacked need to downgrade
             room.memory.upgrade_pos_smart_hauler = build_creeps[build_creeps[room.memory.upgrade_pos_smart_hauler][0] - 1][0];
         } else if (energy_available >= current_upgrade_cost && 

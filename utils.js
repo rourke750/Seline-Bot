@@ -132,6 +132,7 @@ var utils = {
                 return true;
             }
         }
+        //todo return container if creep is an upgrader
         
         return this.findStorage(creep);
     },
@@ -541,6 +542,14 @@ var utils = {
             const errCode = creep.moveByPath(p);
             creep.memory.last_pos = creep.pos;
             creep.memory.last_pos_time = Game.time;
+            if (errCode == ERR_NOT_FOUND) {
+                return;
+            } else if (errCode == ERR_INVALID_ARGS) {
+                this.cleanup_move_to(creep);
+            }
+            else if (errCode != 0) {
+                console.log(creep.name + ' error with creep moving ' + errCode + ' ' + creep.pos)
+            }
         }
     },
     

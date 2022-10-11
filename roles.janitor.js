@@ -29,7 +29,7 @@ const roleJanitor = {
             const s = structs[struct]
             //console.log(s.hitsMax + ' ' + s.hits + ' ' + s.structureType + ' ' + s.pos.x + ' ' + s.pos.y)
             if (s.structureType == STRUCTURE_WALL || s.structureType == STRUCTURE_RAMPART)
-                totalRepairPoints += rampartAndWallMaxHealth;
+                totalRepairPoints += Math.max(0, (rampartAndWallMaxHealth/10) - s.hits);
             else
                 totalRepairPoints += s.hitsMax - s.hits;
         }
@@ -50,7 +50,7 @@ const roleJanitor = {
         let buildAmount = 0;
         if (v > 0) 
             buildAmount = Math.ceil(Math.log10(v));
-        return repairAmount + buildAmount;
+        return Math.max(0, Math.min(common.maxJanitors, repairAmount + buildAmount));
     },
 
     findConstructSite: function(creep) {
@@ -142,7 +142,10 @@ const roleJanitor = {
         if (!con)
             return roleJanitor.find_repairs(creep);
         // otherwise randomly pick one or the other
-        if (Math.floor(Math.random * 2) == 1 && con) {
+        const i = Math.floor(Math.random() * 2);
+        if (creep.room.name == 'W7N4')
+            console.log(i, con)
+        if (i == 1 && con) {
             // if equal to 1 return con if they exist
             return con;
         } 

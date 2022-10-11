@@ -16,13 +16,20 @@ const CONSTRUCTION_PRIORITY = {
     'extensions': 2,
 }
 
+const obsticalD = {};
+for (ob in OBSTACLE_OBJECT_TYPES) {
+    obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
+}
+
 const common = {
     roomMapping: ROOM_TYPE,
     maxConstructionsPerRoom: 2,
+    maxJanitors: 4,
     username: 'rourke750',
 
     constructionPriority: CONSTRUCTION_PRIORITY,
     creepRole: CREEP_ROLE,
+    obsticalD: obsticalD,
 }
 
 module.exports = common;

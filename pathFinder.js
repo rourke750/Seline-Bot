@@ -9,7 +9,7 @@ for (ob in OBSTACLE_OBJECT_TYPES) {
     obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
 }
 
-let destinationMappings = {}; // room to position to creeps
+let destinationMappings = {}; // room to move position to creeps
 let currentCreepMapping = {}; // room to current position to creeps
 let dirCreep = {}; // creep to dir
 let pathCreep = {}; // creep to path for drawing
@@ -21,24 +21,87 @@ const pathGenerator = {
         const p = pathCreep[creep.name];
 
         if (creep.fatigue == 0) {
-            creep.move(dir);
+            const e = creep.move(dir);
         }
         if (p != null)
             new RoomVisual(creep.room.name).poly(p, {stroke: '#fff', strokeWidth: .15,
                 opacity: .2, lineStyle: 'dashed'});
     },
 
+    handleSolvePathsNotMoving: function(creep, oCreep, roomName) {
+        // handle moving a creep that currently isnt moving
+        const cP = oCreep.memory.current_path;
+        if (cP && cP[oCreep.room.name]) {
+            // instead of swapping spots move creep further along its path
+            oCreep.moveByPath(cP[oCreep.room.name]);
+            return false;
+        }
+        const name = oCreep.name;
+        // if creap name is not here then it is not moving lets just swap
+        const dir = this.getDirection(creep.pos.x - oCreep.pos.x, creep.pos.y - oCreep.pos.y);
+        // enter the dir for that creep
+        dirCreep[name] = dir;
+        const toPos = `${creep.pos.x}-${creep.pos.y}`;
+        const currentPos = `${oCreep.pos.x}-${oCreep.pos.y}`;
+
+        if (!(toPos in destinationMappings[roomName]))
+            destinationMappings[roomName][toPos] = {};
+
+        if (!(currentPos in currentCreepMapping[roomName]))
+            currentCreepMapping[roomName][currentPos] = {};
+
+        destinationMappings[roomName][toPos][name] = true;
+        currentCreepMapping[roomName][currentPos][name] = true;
+        return true;
+    },
+
     solvePaths: function() {
         for (const roomName in destinationMappings) {
             const creepPositions = currentCreepMapping[roomName];
+            const recentlyModified = {};
             for (const position in destinationMappings[roomName]) {
                 const array = position.split('-');
-                const x = array[0];
-                const y = array[1];
+                const x = array[0]; // next x moving to
+                const y = array[1]; // next y moving to
                 const creeps = destinationMappings[roomName][position];
-                for (const creepK in creeps) {
-                    const creepName = creeps[creepK];
+
+                for (const creepName in creeps) {
+                    if (creepName in recentlyModified)
+                        continue;
                     const creep = Game.creeps[creepName];
+                    // todo check if there is a creep in the position we want to move to
+                    // if there is and it doesn't have a move then move it
+
+                    // todo check if where we want to move to and there is fatigue for it
+                    // if it has fatigue determine how i want to solve that, maybe wait maybe repath around it to the next location
+                    // ie if there are 3+ positions path to the position after the blocked creep
+
+                    // todo creeps can get stuck when theres only one place to go, a creep is blocking the path, and then it tries to repath
+                    // but avoid creeps but cant move since a creep is in the way
+                    // then the other creep wont switch spaces since the other creep doesnt have a path and then this one loses its path
+                    // since it cant path around as well
+
+                    // todo pull the utils code here and then determine in what situtations when to repath or not
+                    
+                    // check if there is a creep in the way that we are going to move to
+                    const c = creep.room.lookForAt(LOOK_CREEPS, parseInt(x), parseInt(y));
+                    // check if creep has a next movement, if it doesnt swap spots
+                    if (c.length && !(c[0].name in dirCreep) && c[0].my) {
+                        const oCreep = c[0];
+                        if (this.handleSolvePathsNotMoving(creep, oCreep, roomName))
+                            recentlyModified[oCreep.name] = true; // if true we swapped places add to recently modified
+                        // if we are moving further along then process it like any other creep
+                    }
+                    // todo handle the case when creep is blocking but is moving somewhere
+                    // check for cooldown if not temp block
+                }
+            }
+            for (const position in destinationMappings[roomName]) {
+                const creeps = destinationMappings[roomName][position];
+                for (const creepName in creeps) {
+                    const creep = Game.creeps[creepName];
+                    if (!creep)
+                        console.log(creepName, 'was undefined', creep);
                     this.moveCreep(creep);
                 }
             }
@@ -51,16 +114,16 @@ const pathGenerator = {
         if (!(roomName in destinationMappings)) // no room name
             destinationMappings[roomName] = {};
         if (!(dstKey in destinationMappings[roomName])) // no dstkey
-            destinationMappings[roomName][dstKey] = [];
+            destinationMappings[roomName][dstKey] = {};
 
         const curKey = `${creep.pos.x}-${creep.pos.y}`;
         if (!(roomName in currentCreepMapping)) // no room name
             currentCreepMapping[roomName] = {};
         if (!(curKey in currentCreepMapping[roomName])) // no dstkey
-            currentCreepMapping[roomName][curKey] = [];
+            currentCreepMapping[roomName][curKey] = {};
 
-        destinationMappings[roomName][dstKey].push(creep.name);
-        currentCreepMapping[roomName][curKey].push(creep.name);
+        destinationMappings[roomName][dstKey][creep.name] = true;
+        currentCreepMapping[roomName][curKey][creep.name] = true;
         dirCreep[creep.name] = dir;
         pathCreep[creep.name] = path;
     },

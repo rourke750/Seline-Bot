@@ -168,18 +168,37 @@ var utilsroom = {
                         room.memory.sources[sourceId].y = source.pos.y;
                     }
 
-                    if (room.memory.sources[sourceId].maxCreeps == null) {
-                        // let's try find the max creeps we can support
-                        const a = room.lookAtArea(source.pos.y-1, source.pos.x-1, source.pos.y+1, source.pos.x+1, true);
-                        count = 0
-                        positions = [];
-                        for (const aK in a) {
-                            const aV = a[aK];
-                            if (aV.type == 'terrain' && (aV.terrain == 'plain' || aV.terrain == 'swamp')) {
-                                count += 1;
-                                positions.push([aV.x, aV.y]);
+                    const a = room.lookAtArea(source.pos.y-1, source.pos.x-1, source.pos.y+1, source.pos.x+1, true);
+                    let count = 0
+                    let tempPositions = {};
+                    for (const aK in a) {
+                        const aV = a[aK];
+                        const k = `${aV.x}-${aV.y}`;
+                        if (aV.type == 'terrain' && (aV.terrain == 'plain' || aV.terrain == 'swamp')) {
+                            if (!(k in tempPositions)) {
+                                tempPositions[k] = true;
+                                count++;
                             }
+                        } else if (aV.type == 'structure' && aV.structure.structureType in common.obsticalD) {
+                            if (k in tempPositions && tempPositions[k]) {
+                                count--;
+                            }
+                            tempPositions[k] = false;
                         }
+                    }
+                    let positions = [];
+                    for (const posK in tempPositions) {
+                        if (tempPositions[posK]) {
+                            const v = posK.split('-');
+                            positions.push([v[0], v[1]]);
+                        }
+                    }
+                    // check if the count for a source changed
+                    if (room.memory.sources[sourceId].maxCreeps && room.memory.sources[sourceId].maxCreeps.maxCount &&
+                        count != room.memory.sources[sourceId].maxCreeps.maxCount) {
+                        room.memory.sources[sourceId].maxCreeps.positions = positions;
+                        room.memory.sources[sourceId].maxCreeps.maxCount = count;
+                    } else if (room.memory.sources[sourceId].maxCreeps == null) {
                         room.memory.sources[sourceId].maxCreeps = {positions: positions, maxCount: count, occupied: new Array(count).fill(0)};
                     }
                     
