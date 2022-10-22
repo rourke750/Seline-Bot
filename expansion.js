@@ -19,17 +19,36 @@ var expansion = {
             
             if (room.controller && !room.controller.my) // skip scanning if not my room
                 continue;
-            for (let x = parseInt(roomName[1]) - 1; x < parseInt(roomName[1]) + 2; x++) {
+            let xName = roomName[0];
+            let xSpot = roomName[1];
+            let pos = 2;
+            for (; pos < roomName.length; pos++) {
+                if (roomName[pos] >= '0' && roomName[pos] <= '9')
+                    xSpot += roomName[pos];
+                else
+                    break;
+            }
+            let yName = roomName[pos++];
+            let ySpot = roomName[pos++];
+            for (; pos < roomName.length; pos++) {
+                if (roomName[pos] >= '0' && roomName[pos] <= '9')
+                    ySpot += roomName[pos];
+                else
+                    break;
+            }
+            xSpot = parseInt(xSpot);
+            ySpot = parseInt(ySpot);
+            for (let x = xSpot - 1; x < xSpot + 2; x++) {
                 if (x < 0) 
                     continue;
-                for (let y = parseInt(roomName[3]) - 1; y < parseInt(roomName[3]) + 2; y++) {
+                for (let y = ySpot - 1; y < ySpot + 2; y++) {
                     if (y < 0) 
                         continue;
-                    if (x == roomName[1] && y == roomName[3]) 
+                    if (x == xSpot && y == ySpot) 
                         continue;
 
-                    const n = `${roomName[0]}${x}${roomName[2]}${y}`;
-                    if (!(n in Memory.rooms))
+                    const n = `${xName}${x}${yName}${y}`;
+                    if (!(n in Memory.rooms) && Game.map.getRoomStatus(n).status != 'closed')
                         Memory.rooms[n] = {};
                 }
             }
@@ -118,7 +137,8 @@ var expansion = {
             if (roomName in Game.rooms) // we already have vision continue
                 continue;
             const v = Memory.rooms[roomName];
-            if (roomName in Memory.flags.blacklist) { // dont want to scout a blacklisted room
+            if (roomName in Memory.flags.blacklist || Game.map.getRoomStatus(roomName).status == 'closed') { 
+                // dont want to scout a blacklisted room or closed room
                 continue;
             } else if (!v.lastScouted) { // never been scouted
                 earliestRoomName = roomName;
@@ -240,12 +260,22 @@ var expansion = {
                 roomNames.push(k);
             }
         }
+
+        // check if this room is now owned and no longer worth expanding to
+        if (Object.keys(Memory.flags.captureAuto).length > 0 && 
+            (Memory.rooms[Object.keys(Memory.flags.captureAuto)[0]].type == common.roomMapping.RESERVED || 
+            Memory.rooms[Object.keys(Memory.flags.captureAuto)[0]].type == common.roomMapping.OWNED) &&
+            Object.keys(Memory.flags.captureAuto)[0] in Memory.flags.captureAuto) {
+            // it is owned by someone else
+            Memory.flags.captureAuto[Object.keys(Memory.flags.captureAuto)[0]] = {};
+        }
         
         if (roomCount >= Game.gcl.level) {
             Memory.flags.captureAuto = {};
             return; // room count is max nothing to do
         }
 
+        // go through and see if we have captured the room yet
         if (Object.keys(Memory.flags.captureAuto).length > 0) {
             // check if we have claimed the room yet
             const k = Object.keys(Memory.flags.captureAuto)[0];
@@ -266,12 +296,15 @@ var expansion = {
         // now go through rooms in memory and add to an array of all rooms that look okay to expand to
         const expandRooms = [];
         for (const k in Memory.rooms) {
+            const room = Memory.rooms[k];
             if (Game.rooms[k] != null && Game.rooms[k].controller && Game.rooms[k].controller.my) {
                 continue; // room is already owned skip
+            } else if (room.type == common.roomMapping.RESERVED || room.type == common.roomMapping.OWNED) {
+                // check in memory if it is reserved or owned
+                continue;
             }
-            const room = Memory.rooms[k];
             if (room.spawnMasterX != null && Object.keys(room.sources).length >= 2 && !room.eCP) {
-                // room has a plan, more than 1 source, and isnt enemy controller
+                // room has a plan, more than 1 source, and isnt owned by someone else
                 expandRooms.push(k);
             }
         }

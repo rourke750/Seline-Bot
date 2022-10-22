@@ -16,10 +16,10 @@ function getContainer(roomName, sourceId) {
         CONTAINER_LOOK_UP[roomName][sourceId] = null;
     }
 
-    if (!(sourceId in CONTAINER_LOOK_UP[roomName])) {
+    if (!CONTAINER_LOOK_UP[roomName][sourceId]) {
         // try find it
         const coords = Memory.rooms[roomName].sources[sourceId].maxCreeps.positions[0];
-        const structures = Game.rooms[roomName].lookForAt(LOOK_STRUCTURES, coords[0], coords[1]);
+        const structures = Game.rooms[roomName].lookForAt(LOOK_STRUCTURES, parseInt(coords[0]), parseInt(coords[1]));
         for (const s in structures) {
             if (structures[s].structureType == STRUCTURE_CONTAINER) {
                 CONTAINER_LOOK_UP[roomName][sourceId] = structures[s].id;
@@ -28,9 +28,9 @@ function getContainer(roomName, sourceId) {
         }
     }
     // check if there is maybe a construction site
-    if (!CONTAINER_LOOK_UP[roomName[sourceId]]) {
+    if (!CONTAINER_LOOK_UP[roomName][sourceId]) {
         const coords = Memory.rooms[roomName].sources[sourceId].maxCreeps.positions[0];
-        const structures = Game.rooms[roomName].lookForAt(LOOK_CONSTRUCTION_SITES, coords[0], coords[1]);
+        const structures = Game.rooms[roomName].lookForAt(LOOK_CONSTRUCTION_SITES, parseInt(coords[0]), parseInt(coords[1]));
         for (const s in structures) {
             if (structures[s].structureType == STRUCTURE_CONTAINER) {
                 CONTAINER_LOOK_UP[roomName][sourceId] = structures[s].id;

@@ -1,23 +1,24 @@
 const common = require('common');
+const utilscreep = require('utilscreep');
+
+if (!Memory.allies) {
+    Memory.allies = {}
+}
 
 const military = {
+    
     watchRooms: function(roomName) {
         const room = Game.rooms[roomName];
         if (!room) {
             return;
         }
         const events = room.getEventLog();
-        const attackEvents = _.filter(events, {event: EVENT_ATTACK})
+        const attackEvents = _.filter(events, f => f.event == EVENT_ATTACK || f.event == EVENT_OBJECT_DESTROYED);
+        // global.commands.createFakeCreep('E17N22-1', 'E18N23', 7, 20)
         if (attackEvents.length == 0) {
             return;
         }
 
-        // there was an attack let's see if we need to add them to hostilities list
-        //console.log(JSON.stringify(attackEvents))
-        if (!Memory.allies) {
-            Memory.allies = {}
-        }
-        // todo add them to enemies list
         for (const k in attackEvents) {
             const v = attackEvents[k];
             const caster = Game.getObjectById(v.objectId);
@@ -27,11 +28,16 @@ const military = {
                 continue;
             }
             const target = Game.getObjectById(v.data.targetId);
-            if (!caster.my && ((target instanceof Creep && target.my) || (target instanceof Structure && room.controller && room.controller.my))) {
+            if (!caster.my && (utilscreep.containsPreviousCreepId(v.data.targetId) || 
+                (target instanceof Creep && target.my) || (target instanceof Structure && room.controller && room.controller.my))) {
                 // it's attacking me or something
                 const attackerOwner = caster.owner.username;
                 if (!(attackerOwner in Memory.allies)) {
                     Memory.allies[attackerOwner] = {};
+                }
+                if (!Memory.allies[attackerOwner].enemy) {
+                    // has just become our enemy
+                    Game.notify('We have just been attacked by', attackerOwner, 'they are now our enemy!');
                 }
                 Memory.allies[attackerOwner].enemy = true;
             }

@@ -61,6 +61,7 @@ global.commands = commands;
 global.transport = transport;
 global.utilsroom = utilsroom;
 global.utilscreep = utilscreep;
+global.canHarvester = roleCanHarvester;
 
 function handleFlags() {
     const m = Memory['flags'];
@@ -392,5 +393,6 @@ module.exports.loop = wrapWithMemoryHack(function() {
     
     handleCreeps();
     os.run();
+    utilscreep.resetPreviousCreepIds();
     exportStats();
 });

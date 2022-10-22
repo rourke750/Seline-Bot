@@ -91,6 +91,10 @@ const pathGenerator = {
                         if (this.handleSolvePathsNotMoving(creep, oCreep, roomName))
                             recentlyModified[oCreep.name] = true; // if true we swapped places add to recently modified
                         // if we are moving further along then process it like any other creep
+                    } else if (c.length && c[0].name in dirCreep && c[0].my) {
+                        // handle the case when creep is blocking but is moving somewhere
+                        const oCreep = c[0];
+                        
                     }
                     // todo handle the case when creep is blocking but is moving somewhere
                     // check for cooldown if not temp block
@@ -315,7 +319,8 @@ const pathGenerator = {
                 // no exit generate it
                 const v = this.findHighwayGetPath(start, dir.room);
                 if (v.incomplete) {
-                    console.log('pathFinder incomplete path when trying to find highway room: ',dir.room, JSON.stringify(v));
+                    console.log('pathFinder incomplete path when trying to find highway room: ', dir.room, 
+                    ' from ', currentRoom, JSON.stringify(v));
                     return; // exit dont want the shit path
                 }
                 const r = this.getStartAndExit(start, dir.room, v);
@@ -555,6 +560,20 @@ const pathGenerator = {
             }
         }
         
+    },
+
+    findRoute: function() {
+        const route = Game.map.findRoute(new RoomPosition(14, 12, 'E17N22'), 'E18N23', {
+            routeCallback(roomToName, roomFromName) {
+                if (opts.avoidHostile && roomToName in Memory.rooms && Memory.rooms[roomToName].eCP) {
+                    return Infinity;
+                } else if (roomToName in Memory.flags.blacklist) {
+                    return Infinity;
+                }
+                return 1;
+            }
+        });
+        return 'a' + JSON.stringify(route);
     },
 
     generateThreads: function(roomName) {

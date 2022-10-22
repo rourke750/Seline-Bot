@@ -3,6 +3,8 @@ let filtered_role_home_mapping = {};
 
 let mapping_room_to_spawn = {};
 
+let previous_creep_ids = {};
+
 var utilscreep = {
 
     generateRoomToSpawnMapping: function() {
@@ -115,6 +117,17 @@ var utilscreep = {
         }
         return objs;
     },
+
+    resetPreviousCreepIds: function() {
+        previous_creep_ids = {};
+        for (const k in Game.creeps) {
+            previous_creep_ids[Game.creeps[k].id] = true; 
+        }
+    },
+
+    containsPreviousCreepId: function(id) {
+        return id in previous_creep_ids;
+    }
 };
 
 module.exports = utilscreep;
