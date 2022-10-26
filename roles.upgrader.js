@@ -1,5 +1,6 @@
-var utils = require('utils');
-var transport = require('transport');
+const utils = require('utils');
+const utilscreep = require('utilscreep');
+const transport = require('transport');
 
 const normal_creep = [WORK, CARRY, MOVE];
 const big_creep = [WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE];
@@ -31,7 +32,7 @@ var roleUpgrader = {
             if (!storage)
                 return 1;
             storage = storage.storage;
-            const carry = utils.get_creep_carry(build_creeps[room.memory.upgrade_pos_upgrader || 0][1]);
+            const carry = utils.get_creep_carry(utilscreep.scaleByEnergy([WORK, CARRY, MOVE], [WORK, CARRY, MOVE], room.energyAvailable));
             return Math.max(Math.min(6, storage / carry), 1);
         }
         return 2;
@@ -67,9 +68,11 @@ var roleUpgrader = {
 	
 	create_creep: function(spawn) {
         var newName = 'Upgrader' + Game.time + spawn.name.charAt(spawn.name.length - 1);
-        let b = build_creeps[spawn.room.memory.upgrade_pos_upgrader][1];
+        let b = null; //build_creeps[spawn.room.memory.upgrade_pos_upgrader][1];
         if (spawn.room.controller.level == 8)
             b = rcl_8;
+        else
+            b = utilscreep.scaleByEnergy([WORK, CARRY, MOVE], null, spawn.room.energyAvailable)
         spawn.spawnCreep(b, newName,
             {memory: {role: 'upgrader', upgrading: false, home_room: spawn.room.name}});
         if (Game.creeps[newName]) {

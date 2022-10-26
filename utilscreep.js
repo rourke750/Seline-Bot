@@ -127,6 +127,40 @@ var utilscreep = {
 
     containsPreviousCreepId: function(id) {
         return id in previous_creep_ids;
+    },
+
+    scaleByEnergy: function(array, singleAddons, roomEnergy) {
+        const newArray = [];
+        let totalEnergy = 0;
+        let count = 0;
+        // go through and add the single static requirements
+        if (singleAddons) {
+            for (const k in singleAddons) {
+                const v = singleAddons[k];
+                totalEnergy += BODYPART_COST[v];
+                count++;
+                newArray.push(v);
+            }
+        }
+        if (totalEnergy > roomEnergy)
+            return null;
+
+        // now dynamically calculate the rest of the body parts
+        // start by calculating how much it will cost to do each row
+        let energyRow = 0;
+        let countRow = array.length;
+        for (const k in array) {
+            const v = array[k];
+            energyRow += BODYPART_COST[v];
+        }
+
+        // now energyRow has how much it costs per row to do
+        while(count + countRow <= 50 && totalEnergy + energyRow < roomEnergy) {
+            newArray.push(...array);
+            count += countRow;
+            totalEnergy += energyRow;
+        }
+        return newArray;
     }
 };
 

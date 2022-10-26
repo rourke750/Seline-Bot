@@ -14,7 +14,6 @@ const military = {
         }
         const events = room.getEventLog();
         const attackEvents = _.filter(events, f => f.event == EVENT_ATTACK || f.event == EVENT_OBJECT_DESTROYED);
-        // global.commands.createFakeCreep('E17N22-1', 'E18N23', 7, 20)
         if (attackEvents.length == 0) {
             return;
         }

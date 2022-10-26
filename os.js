@@ -167,6 +167,7 @@ if (Memory.os == null) {
 }
 
 const heap = new Heap();
+const readd = [];
 
 var Threads = {
     newThread: function(name, method, position, exitOnFailure=false) {
@@ -209,13 +210,19 @@ var Threads = {
         pastExecutions = {};
         // first run through just tick everyone
         let start = Game.cpu.getUsed();
+
+        // go ahead and readded to array, this should be empty unless we were cut off in middle of running
+        while (readd.length > 0) {
+            const v = readd.pop();
+            heap.add(v);
+        }
+
         let loops = 0;
         for (let i = 0; i < heap.size(); i++) {
             const v = heap.get(i);
             v.tick();
         }
 
-        const readd = [];
         // now logic for running through
         for (let i = 0; i < heap.size(); i++) {
             loops++;
@@ -243,8 +250,9 @@ var Threads = {
                 break;
             }
         }
-        for (const i in readd) {
-            const v = readd[i];
+        // go ahead and readded to array
+        while (readd.length > 0) {
+            const v = readd.pop();
             heap.add(v);
         }
         
