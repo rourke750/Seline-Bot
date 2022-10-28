@@ -1,10 +1,16 @@
-var utils = require('utils');
+const utils = require('utils');
+const utilscreep = require('utilscreep');
+const transport = require('transport');
 
 const normal_creep = [WORK, CARRY, MOVE];
 const big_creep = [WORK, WORK, WORK, CARRY, CARRY, MOVE, MOVE];
 const bigger_creep = [WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE]; // 800
 const biggerr_creep = [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, CARRY, CARRY, CARRY, CARRY, CARRY, 
     CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE];
+
+const rcl_8 = [WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK, WORK,
+    CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, 
+    MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE];
 
 const build_creeps = [
     [0, normal_creep, utils.get_creep_cost(normal_creep)],
@@ -14,11 +20,20 @@ const build_creeps = [
 ]
 
 var roleUpgrader = {
+
+    moveOutOfWayNoEnergy: function(creep) {
+        return creep.room.controller;
+    },
     
     get_harvest_count: function(room) {
         // todo get the amount of repairs needed and spawn based on it
         if (room.controller && room.controller.my && room.controller.level < 8) {
-            return 6;
+            let storage = transport.getRoomInfo(room.name, false);
+            if (!storage)
+                return 1;
+            storage = storage.storage;
+            const carry = utils.get_creep_carry(utilscreep.scaleByEnergy([WORK, CARRY, MOVE], null, room.energyCapacityAvailable));
+            return Math.max(Math.min(6, storage / carry), 1);
         }
         return 2;
     },
@@ -34,7 +49,7 @@ var roleUpgrader = {
         }
         
 	    if(!creep.memory.upgrading) {
-            if (!utils.harvest_source(creep)) {
+            if (!utils.harvest_source(creep, true, this.moveOutOfWayNoEnergy)) {
                 creep.memory.upgrading = true;
                 utils.cleanup_move_to(creep);
                 creep.memory.destId = Game.rooms[creep.memory.home_room].controller.id;
@@ -42,9 +57,10 @@ var roleUpgrader = {
         }
         
         const upgradeErr = creep.upgradeController(Game.rooms[creep.memory.home_room].controller)
-        if (creep.memory.destId == null) {
+        if (creep.memory.upgrading && creep.memory.destId == null) {
             creep.memory.destId = Game.rooms[creep.memory.home_room].controller.id;
         }
+        
         if(creep.memory.upgrading && upgradeErr == ERR_NOT_IN_RANGE) {
             utils.move_to(creep, this.get_main_upgrader);
         }
@@ -52,7 +68,12 @@ var roleUpgrader = {
 	
 	create_creep: function(spawn) {
         var newName = 'Upgrader' + Game.time + spawn.name.charAt(spawn.name.length - 1);
-        spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_upgrader][1], newName,
+        let b = null; //build_creeps[spawn.room.memory.upgrade_pos_upgrader][1];
+        if (spawn.room.controller.level == 8)
+            b = rcl_8;
+        else
+            b = utilscreep.scaleByEnergy([WORK, CARRY, MOVE], null, spawn.room.energyAvailable)
+        spawn.spawnCreep(b, newName,
             {memory: {role: 'upgrader', upgrading: false, home_room: spawn.room.name}});
         if (Game.creeps[newName]) {
             return Game.creeps[newName];
@@ -68,6 +89,8 @@ var roleUpgrader = {
         if (room.controller.level == 0) {
             return;
         }
+        if (energy_available == 0 && build_creeps[room.memory.upgrade_pos_janitor][0] == 0)
+            return;
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_upgrader][2];
         if (current_upgrade_cost > energy_available) {
             // attacked need to downgrade
@@ -81,6 +104,10 @@ var roleUpgrader = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
 }
 

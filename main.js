@@ -5,6 +5,10 @@ const roleRepairer = require('roles.repairer');
 const roleSmartHarvester = require('roles.smart_harvester');
 const roleHauler = require('roles.hauler');
 const roleScout = require('roles.scout');
+const roleCanHarvester = require('roles.canHarvester');
+const roleTransport = require('roles.transport');
+const roleJanitor = require('roles.janitor');
+const roleFake = require('roles.fake');
 
 const militaryClaimer = require('military.claimer');
 const militaryDefender = require('military.defender');
@@ -31,6 +35,8 @@ const creepConstruction = require('creepConstruction');
 
 const commands = require('commands');
 
+const transport = require('transport');
+
 const creepMapping = {
     'harvester' : roleHarvester,
     'upgrader' : roleUpgrader,
@@ -40,32 +46,11 @@ const creepMapping = {
     'smartHarvester' : roleSmartHarvester,
     'defender' : militaryDefender,
     'hauler' : roleHauler,
-    'scout' : roleScout
-}
-
-const profilerMapings = {
-    'utils' : utils,
-    'roleHarvester' : roleHarvester,
-    'roleUpgrader' : roleUpgrader,
-    'roleBuilder' : roleBuilder,
-    'roleRepairer' : roleRepairer,
-    'roleSmartHarvester' : roleSmartHarvester,
-    'militaryDefender' : militaryDefender,
-    'militaryClaimer' : militaryClaimer,
-    'roleHauler' : roleHauler,
-    'construction' : construction,
-    'pathfinder' : pathFinder,
-    'scout' : roleScout
-}
-
-//profiler.enable();
-//console.log(JSON.stringify(utils.valueOf()))
-for (const pMap in profilerMapings) {
-    for (const k in profilerMapings[pMap]) {
-        if (typeof profilerMapings[pMap][k] == 'function') {
-            profilerMapings[pMap][k] = profiler.registerFN(profilerMapings[pMap][k], `${pMap}.${k}`);
-        }
-    }
+    'scout' : roleScout,
+    'canHarvester': roleCanHarvester,
+    'transport': roleTransport,
+    'janitor': roleJanitor,
+    'fake': roleFake,
 }
 
 global.utils = utils;
@@ -73,6 +58,10 @@ global.pathFinder = pathFinder;
 global.os = os;
 global.military = military;
 global.commands = commands;
+global.transport = transport;
+global.utilsroom = utilsroom;
+global.utilscreep = utilscreep;
+global.canHarvester = roleCanHarvester;
 
 function handleFlags() {
     const m = Memory['flags'];
@@ -161,7 +150,7 @@ function loopRooms() {
     for (var name in Game.rooms) {
         const room = Game.rooms[name];
         utilsroom.constructRooms(room);
-        utilsroom.upgradeRooms(room);
+        utilsroom.upgradeRooms(room, creepMapping);
         militaryTower.run(room);
 
         utilsroom.handleSources(room);
@@ -206,7 +195,36 @@ function loopSpawns() {
         }
         os.newThread(name, f, 10);
     }
+
+    name = 'main-handle-creep-spawning-canHarvester'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = utilscreep.getRoomToSpawnMapping();
+            creepConstruction.handleBuildCanMiner(mapping);
+        }
+        os.newThread(name, f, 10);
+    }
+
+    name = 'main-handle-creep-spawning-transfer'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = utilscreep.getRoomToSpawnMapping();
+            creepConstruction.handleBuildTransport(mapping);
+        }
+        os.newThread(name, f, 10);
+    }
+
+    name = 'main-handle-creep-spawning-capture'
+    if (!os.existsThread(name)) {
+        const f = function() {
+            const mapping = utilscreep.getRoomToSpawnMapping();
+            creepConstruction.handleBuildClaimer(mapping);
+        }
+        os.newThread(name, f, 10);
+    }
 }
+
+let errorStacks = {};
 
 function handleCreeps() {
     let name = 'main-handle-creep-running'
@@ -214,19 +232,35 @@ function handleCreeps() {
         const f = function() {
             for(var i in Memory.creeps) {
                 if(!Game.creeps[i]) {
+                    if (Memory.creeps[i].role)
+                        creepMapping[Memory.creeps[i].role].cleanUp(i);
                     delete Memory.creeps[i];
                 }
             }
-            
+
+            // reset creep pos
+            pathFinder.resetCreepDst();
             for(var name in Game.creeps) {
                 var creep = Game.creeps[name];
                 var role = creep.memory.role;
                 if (role == null || role == undefined) {
                     console.log(creep.name + ' ' + role + ' has an undefined role? ' + creep.pos);
+                    // well can't do shit with it
+                    creep.suicide();
                     continue;
                 }
-                creepMapping[role].run(creep);
+                try {
+                    creepMapping[role].run(creep);
+                } catch (error) {
+                    if (!(error.stack in errorStacks)) {
+                        Game.notify(error.stack);
+                        errorStacks[error.stack] = true;
+                        console.log(error.stack);
+                    }
+                }
             }
+            // try move creeps
+            pathFinder.solvePaths();
         }
         os.newThread(name, f, 1);
     }
@@ -260,7 +294,10 @@ function exportStats() {
       gcl: {},
       rooms: {},
       cpu: {},
+      creeps: {},
       os: os.getStats(),
+      heap: {},
+      memory: {},
     };
   
     Memory.stats.time = Game.time;
@@ -280,6 +317,12 @@ function exportStats() {
         roomStats.controllerLevel         = room.controller.level;
       }
     }
+
+    // heap data
+    Memory.stats.heap              = Game.cpu.getHeapStatistics();
+
+    // collect creeper count
+    Memory.stats.creeps.count      = Object.keys(Game.creeps).length;
   
     // Collect GCL stats
     Memory.stats.gcl.progress      = Game.gcl.progress;
@@ -295,19 +338,61 @@ function exportStats() {
     Memory.stats.cpu.metricsUsed   = Game.cpu.getUsed() - start;
 }
 
-module.exports.loop = function () {
+function wrapWithMemoryHack(fn) {
+    let memory;
+    let tick;
+    let lastSerializeTime = undefined;
+    let lastMemSize = undefined;
+  
+    return () => {
+        if (tick && tick + 1 === Game.time && memory) {
+            // this line is required to disable the default Memory deserialization
+            delete global.Memory;
+            Memory = memory;
+        } else {
+            memory = Memory;
+        }
+
+        tick = Game.time;
+  
+        fn();
+  
+        // there are two ways of saving Memory with different advantages and disadvantages
+        // 1. RawMemory.set(JSON.stringify(Memory));
+        // + ability to use custom serialization method
+        // - you have to pay for serialization
+        // - unable to edit Memory via Memory watcher or console
+        // 2. RawMemory._parsed = Memory;
+        // - undocumented functionality, could get removed at any time
+        // + the server will take care of serialization, it doesn't cost any CPU on your site
+        // + maintain full functionality including Memory watcher and console
     
-    profiler.wrap(function() {
-        // iterate through flags and pull out details
-        initialize();
+        // this implementation uses the official way of saving Memory
+        Memory.stats.cpu.memorySerialize = lastSerializeTime;
+        //Memory.stats.memory.size = lastMemSize;
         
-        loopRooms();
-        //return
-        
-        loopSpawns();
-        
-        handleCreeps();
-        os.run();
-        exportStats();
-    })
-}
+        let s = Game.cpu.getUsed();
+        const ser = JSON.stringify(Memory);
+
+        // set last serialize time and mem size
+        lastSerializeTime = Game.cpu.getUsed() - s;
+        //lastMemSize = new Blob([ser]).size;
+              
+        RawMemory.set(ser);
+    };
+};
+
+module.exports.loop = wrapWithMemoryHack(function() {
+    // iterate through flags and pull out details
+    initialize();
+    
+    loopRooms();
+    //return
+    
+    loopSpawns();
+    
+    handleCreeps();
+    os.run();
+    utilscreep.resetPreviousCreepIds();
+    exportStats();
+});

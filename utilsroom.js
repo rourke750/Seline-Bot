@@ -13,7 +13,17 @@ let closestRoomMappingTick = Game.time;
 
 var utilsroom = {
 
-    getClosestRoomFromRoom(spawnsMapping, roomName) {
+    doesStructureExist: function(pos, struct) {
+        const structs = pos.lookFor(LOOK_STRUCTURES);
+        for (const s in structs) {
+            if (structs[s].structureType == struct) {
+                return structs[s].id;
+            }
+        }
+        return false;
+    },
+
+    getClosestRoomFromRoom: function(spawnsMapping, roomName, array=false) {
         // first if game tick isnt the same than clear it
         if (Game.time != closestRoomMappingTick) {
             closestRoomMappingSpawn = {};
@@ -22,19 +32,21 @@ var utilsroom = {
 
         // check if the mapping exists
         if (roomName in closestRoomMappingSpawn) {
-            return closestRoomMappingSpawn[roomName];
+            if (array)
+                return closestRoomMappingSpawn[roomName];
+            return closestRoomMappingSpawn[roomName][0];
         }
-        let closest = 9999999;
-        let closestRoomName = null;
+        let mapping = [];
         for (const otherRoomName in spawnsMapping) {
             const d = Game.map.getRoomLinearDistance(roomName, otherRoomName);
-            if (d < closest) {
-                closest = d;
-                closestRoomName = otherRoomName;
-            }
+            mapping.push({d:d, name:otherRoomName});
         }
-        closestRoomMappingSpawn[roomName] = closestRoomName;
-        return closestRoomName;
+        mapping.sort((a, b) => a.d - b.d)
+        mapping = mapping.map(f => f.name);
+        closestRoomMappingSpawn[roomName] = mapping;
+        if (array) 
+            return closestRoomMappingSpawn[roomName];
+        return closestRoomMappingSpawn[roomName][0];
     },
 
     constructRooms: function(room) {
@@ -64,12 +76,12 @@ var utilsroom = {
         }
     },
 
-    upgradeRooms: function(r) {
+    upgradeRooms: function(r, creepMapping) {
         const roomName = r.name;
         let n = 'upgradeRooms-' + roomName + '-watcher'
         if (!os.existsThread(n)) {
             const f = function() {
-                for (const role in common.creepMapping) {
+                for (const role in creepMapping) {
                     // todo i might need to fix this maybe itll generate in every room?
                     if (!(roomName in Game.rooms)) { //|| Game.rooms[roomName].energyCapacityAvailable == 0) {
                         continue;
@@ -82,10 +94,10 @@ var utilsroom = {
                                 //console.log('utilsroom upgrade rooms room is empty ' + roomName + ' ' + room);
                                 return; 
                             }
-                            if (!room.controller || !room.controller.my || room.energyCapacityAvailable == 0) {
+                            if (!room.controller || !room.controller.my) {
                                 return;
                             }
-                            common.creepMapping[role].upgrade(room);
+                            creepMapping[role].upgrade(room);
                         }
                         os.newTimedThread(name, f, 10, 0, 10);
                     }
@@ -95,14 +107,44 @@ var utilsroom = {
         }
     },
 
+    cleanupSources: function(roomName, sourceId) {
+        // remove dead canharvester
+        if (Memory.rooms[roomName].sources[sourceId].canCreep != null &&
+            Game.creeps[Memory.rooms[roomName].sources[sourceId].canCreep] == null) {
+            Memory.rooms[roomName].sources[sourceId].canCreep = undefined;
+        }
+
+        let totalRequest = 0;
+        const creeps = Memory.rooms[roomName].sources[sourceId].creeps;
+        for (const c in creeps) {
+            const v = creeps[c];
+            if (v.lastTicked == null) {
+                Memory.rooms[roomName].sources[sourceId].maxCreeps.occupied[v.maxCreepsIndexPosition] = 0;
+                delete Memory.rooms[roomName].sources[sourceId].creeps[c];
+            } else if (Game.time > v.lastTicked + 3) {
+                Memory.rooms[roomName].sources[sourceId].maxCreeps.occupied[v.maxCreepsIndexPosition] = 0;
+                delete Memory.rooms[roomName].sources[sourceId].creeps[c];
+            } else {
+                if (Game.creeps[c] != undefined) {
+                    totalRequest += Game.creeps[c].store.getFreeCapacity();
+                    // let's go ahead and set this to 1 incase we had cleared it earlier or something
+                    if (!Memory.rooms[roomName].sources[sourceId].canCreep) // only set to 1 if we are not can mining
+                        Memory.rooms[roomName].sources[sourceId].maxCreeps.occupied[v.maxCreepsIndexPosition] = 1;
+                }
+            }
+        }
+        Memory.rooms[roomName].sources[sourceId].totalEnergyWant = totalRequest;
+    },
+
     handleSources: function(room) {
         const sources = room.find(FIND_SOURCES);
         const roomName = room.name;
         for (var id in sources) {
             const name = 'handleSources-' + room.name + '-' + id;
-            const source = sources[id];
+            const sourceId = sources[id].id;
             if (!os.existsThread(name)) {
                 const f = function() {
+                    const source = Game.getObjectById(sourceId);
                     room = Game.rooms[roomName];
                     if (!room) {
                         return;
@@ -113,57 +155,67 @@ var utilsroom = {
                     if (room.memory.sources == null) {
                         room.memory.sources = {};
                     }
-                    if (!(source.id in room.memory.sources)) {
-                        room.memory.sources[source.id] = {};
+                    if (!(sourceId in room.memory.sources)) {
+                        room.memory.sources[sourceId] = {};
                     }
-                    if (room.memory.sources[source.id].creeps == null) {
-                        room.memory.sources[source.id].creeps = {};
+                    if (room.memory.sources[sourceId].creeps == null) {
+                        room.memory.sources[sourceId].creeps = {};
                     }
                     
                     if (room.controller == undefined || !room.controller.my) {
                         // Let's go ahead and scout this room
-                        room.memory.sources[source.id].x = source.pos.x;
-                        room.memory.sources[source.id].y = source.pos.y;
+                        room.memory.sources[sourceId].x = source.pos.x;
+                        room.memory.sources[sourceId].y = source.pos.y;
                     }
 
-                    if (room.memory.sources[source.id].maxCreeps == null) {
-                        // let's try find the max creeps we can support
-                        const a = room.lookAtArea(source.pos.y-1, source.pos.x-1, source.pos.y+1, source.pos.x+1, true);
-                        count = 0
-                        positions = [];
-                        for (const aK in a) {
-                            const aV = a[aK];
-                            if (aV.type == 'terrain' && (aV.terrain == 'plain' || aV.terrain == 'swamp')) {
-                                count += 1;
-                                positions.push([aV.x, aV.y])
+                    const a = room.lookAtArea(source.pos.y-1, source.pos.x-1, source.pos.y+1, source.pos.x+1, true);
+                    let count = 0
+                    let tempPositions = {};
+                    for (const aK in a) {
+                        const aV = a[aK];
+                        const k = `${aV.x}-${aV.y}`;
+                        if (aV.type == 'terrain' && (aV.terrain == 'plain' || aV.terrain == 'swamp')) {
+                            if (!(k in tempPositions)) {
+                                tempPositions[k] = true;
+                                count++;
                             }
+                        } else if (aV.type == 'structure' && aV.structure.structureType in common.obsticalD) {
+                            if (k in tempPositions && tempPositions[k]) {
+                                count--;
+                            }
+                            tempPositions[k] = false;
                         }
-                        room.memory.sources[source.id].maxCreeps = {positions: positions, maxCount: count, occupied: new Array(count).fill(0)};
+                    }
+                    let positions = [];
+                    for (const posK in tempPositions) {
+                        if (tempPositions[posK]) {
+                            const v = posK.split('-');
+                            positions.push([v[0], v[1]]);
+                        }
+                    }
+                    // check if the count for a source changed
+                    if (room.memory.sources[sourceId].maxCreeps && room.memory.sources[sourceId].maxCreeps.maxCount &&
+                        count != room.memory.sources[sourceId].maxCreeps.maxCount) {
+                        room.memory.sources[sourceId].maxCreeps.positions = positions;
+                        room.memory.sources[sourceId].maxCreeps.maxCount = count;
+                    } else if (room.memory.sources[sourceId].maxCreeps == null) {
+                        room.memory.sources[sourceId].maxCreeps = {positions: positions, maxCount: count, occupied: new Array(count).fill(0)};
                     }
                     
-                    if (room.memory.sources[source.id].smartCreep != null &&
-                        Game.creeps[room.memory.sources[source.id].smartCreep] == null) {
-                        room.memory.sources[source.id].smartCreep = null
+                    // remove dead smartharvester
+                    if (room.memory.sources[sourceId].smartCreep != null &&
+                        Game.creeps[room.memory.sources[sourceId].smartCreep] == null) {
+                        room.memory.sources[sourceId].smartCreep = null;
                     }
 
-                    let totalRequest = 0;
-                    for (const c in room.memory.sources[source.id].creeps) {
-                        const v = room.memory.sources[source.id].creeps[c];
-                        if (v.lastTicked == null) {
-                            room.memory.sources[source.id].maxCreeps.occupied[v.maxCreepsIndexPosition] = 0;
-                            delete room.memory.sources[source.id].creeps[c];
-                        } else if (Game.time > v.lastTicked + 3) {
-                            room.memory.sources[source.id].maxCreeps.occupied[v.maxCreepsIndexPosition] = 0;
-                            delete room.memory.sources[source.id].creeps[c];
-                        } else {
-                            if (Game.creeps[c] != undefined) {
-                                totalRequest += Game.creeps[c].store.getFreeCapacity();
-                                // let's go ahead and set this to 1 incase we had cleared it earlier or something
-                                room.memory.sources[source.id].maxCreeps.occupied[v.maxCreepsIndexPosition] = 1;
-                            }
-                        }
+                    utilsroom.cleanupSources(roomName, sourceId);
+                    const exits = Game.map.describeExits(roomName);
+                    for (const k in exits) {
+                        if (!(exits[k] in Memory.rooms) || !Memory.rooms[exits[k]].sources)
+                            continue; // no sources than skip
+                        for (const sId in Memory.rooms[exits[k]].sources)
+                            utilsroom.cleanupSources(exits[k], sId);
                     }
-                    room.memory.sources[source.id].totalEnergyWant = totalRequest;
                 }
                 os.newThread(name, f, 1, true);
             }

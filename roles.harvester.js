@@ -28,42 +28,6 @@ var roleHarvester = {
         });
     },
     
-    find_closest_structure: function(creep) {
-        const containerPosX = creep.room.memory.spawnMasterX;
-        const containerPosY = creep.room.memory.spawnMasterY;
-        let objs = creep.pos.findClosestByRange(FIND_MY_STRUCTURES, {
-                        filter: (structure) => {
-                            const collectorStruct = structure.structureType == STRUCTURE_CONTAINER && structure.pos.x == containerPosX && 
-                                structure.pos.y == containerPosY;
-                            return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN || collectorStruct) &&
-                                structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && structure.room.name == creep.room.name;
-                        }
-                    });
-        // we didn't find any spawns or extensions we could dump energy into
-        if (!objs) {
-            // Let's see if there is a storage or container we can use
-            objs = creep.pos.findClosestByRange(FIND_STRUCTURES, {
-                filter: (structure) => {
-                    return ((structure.structureType == STRUCTURE_CONTAINER && structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0) || 
-                        (structure.structureType == STRUCTURE_STORAGE && structure.store.getUsedCapacity(RESOURCE_ENERGY) < 500000)) 
-                    && structure.room.name == creep.room.name;
-                }
-            });
-        }
-        // we didnt find and containers or storages, lets just go sit somewhere random
-        if (!objs) {
-            const targets = creep.room.find(FIND_STRUCTURES, {
-                filter: (structure) => {
-                    return (structure.structureType == STRUCTURE_EXTENSION || structure.structureType == STRUCTURE_SPAWN) &&
-                        structure.room.name == creep.room.name;
-                }
-            });
-            const i = Math.floor(Math.random() * targets.length);
-            return targets[i];
-        }
-        return objs;
-    },
-    
     run: function(creep) {
         // check if we are out of energy if we are time to switch to collection mode
         if (!creep.memory.collecting && creep.store.getUsedCapacity() == 0) {
@@ -88,7 +52,7 @@ var roleHarvester = {
                     creep.memory.destLoc = {roomName: creep.memory.home_room};
                 } else {
                     // we are in the same room we can just find the location now
-                    var targets = this.find_closest_structure(creep);
+                    var targets = utilscreep.find_closest_drop_off_structure(creep);
                     if (targets != null) {
                         creep.memory.destId = targets.id;
                         creep.memory.destLoc = targets.pos;
@@ -108,12 +72,12 @@ var roleHarvester = {
             // we know we are in the same room and can try transfering
             const dst = Game.getObjectById(creep.memory.destId);
             if (dst == null) {
-                utils.move_to(creep, this.find_closest_structure);
+                utils.move_to(creep, utilscreep.find_closest_drop_off_structure);
             } else {
                 const tErr = creep.transfer(dst, RESOURCE_ENERGY);
                 
                 if (tErr == ERR_NOT_IN_RANGE) {
-                    utils.move_to(creep, this.find_closest_structure);
+                    utils.move_to(creep, utilscreep.find_closest_drop_off_structure);
                 } else if (tErr == ERR_FULL) {
                     utils.cleanup_move_to(creep);
                     // todo sleep for x amount of time
@@ -140,6 +104,8 @@ var roleHarvester = {
         if (room.controller.level == 0) {
             return;
         }
+        if (energy_available == 0 && build_creeps[room.memory.upgrade_pos_janitor][0] == 0)
+            return;
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_harvester][2];
         if (current_upgrade_cost > energy_available) {
             // attacked need to downgrade
@@ -158,6 +124,10 @@ var roleHarvester = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
 };
 

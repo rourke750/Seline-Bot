@@ -12,11 +12,15 @@ let lastDst = null;
 var militaryClaimer = {
 
     find_loc: function(creep) {
-        if (lastDst != null && retry == 0) {
+        if (lastDst && lastDst == Memory.expansion.currentRoom && retry <= 0) {
             // we tried getting the location 3 times time to try somewhere else
             Memory.rooms[Memory.expansion.currentRoom].lastScouted = Game.time;
             Memory.expansion.currentRoom = undefined;
             lastDst = null;
+            retry = 3;
+        } else if (lastDst && lastDst != Memory.expansion.currentRoom) {
+            // our last dest does not match what the current room is
+            lastDst = Memory.expansion.currentRoom;
             retry = 3;
         }
         if (Memory.expansion.currentRoom) {
@@ -47,7 +51,13 @@ var militaryClaimer = {
         if (creep.memory.destLoc == null) {
             return;
         }
-        utils.move_to(creep);        
+        utils.move_to(creep);
+        // check if current path exists, if not new target
+        if (!creep.memory.current_path) {
+            utils.cleanup_move_to(creep);
+            Memory.rooms[Memory.expansion.currentRoom].lastScouted = Game.time;
+            Memory.expansion.currentRoom = undefined;
+        }
     },
 	
 	create_creep: function(spawn) {
@@ -80,6 +90,10 @@ var militaryClaimer = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
     
 }

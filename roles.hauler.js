@@ -147,9 +147,12 @@ var roleHauler = {
                 const tErr = creep.transfer(dst, RESOURCE_ENERGY);
                 
                 if (tErr == ERR_NOT_IN_RANGE) {
-                    utils.move_to(creep);
+                    utils.move_to(creep, null, true, true);
                 } else if (tErr == ERR_FULL) {
                     // we are full we will find a new one next turn
+                    utils.cleanup_move_to(creep);
+                } else if (tErr == 0) {
+                    // success but we can prob get a new target now
                     utils.cleanup_move_to(creep);
                 }
             }
@@ -175,7 +178,7 @@ var roleHauler = {
             return;
         }
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_smart_hauler][2];
-        if (current_upgrade_cost > energy_available && room.memory.upgrade_pos_scout != 0) {
+        if (current_upgrade_cost > energy_available && room.memory.upgrade_pos_smart_hauler != 0) {
             // attacked need to downgrade
             room.memory.upgrade_pos_smart_hauler = build_creeps[build_creeps[room.memory.upgrade_pos_smart_hauler][0] - 1][0];
         } else if (energy_available >= current_upgrade_cost && 
@@ -187,6 +190,10 @@ var roleHauler = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
 };
 

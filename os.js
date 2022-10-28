@@ -1,6 +1,8 @@
 let methodMapping = {};
 let pastExecutions = {};
 
+let errorStacks = {};
+
 /**
  * Threads work by running even if their priority is low.  ie if you set the position to 10 but there is execution power for it to still run
  * then it will run.
@@ -165,6 +167,7 @@ if (Memory.os == null) {
 }
 
 const heap = new Heap();
+const readd = [];
 
 var Threads = {
     newThread: function(name, method, position, exitOnFailure=false) {
@@ -207,13 +210,19 @@ var Threads = {
         pastExecutions = {};
         // first run through just tick everyone
         let start = Game.cpu.getUsed();
+
+        // go ahead and readded to array, this should be empty unless we were cut off in middle of running
+        while (readd.length > 0) {
+            const v = readd.pop();
+            heap.add(v);
+        }
+
         let loops = 0;
         for (let i = 0; i < heap.size(); i++) {
             const v = heap.get(i);
             v.tick();
         }
 
-        const readd = [];
         // now logic for running through
         for (let i = 0; i < heap.size(); i++) {
             loops++;
@@ -228,6 +237,10 @@ var Threads = {
                 pastExecutions[v.name] = Game.cpu.getUsed() - s;
             } catch (error) {
                 console.log(error + '\n' + error.stack)
+                if (!(error.stack in errorStacks)) {
+                    Game.notify(error.stack);
+                    errorStacks[error.stack] = true;
+                }
             }
 
             //console.log(v.name + ' ' +v.value() + ' ' + i);
@@ -237,8 +250,9 @@ var Threads = {
                 break;
             }
         }
-        for (const i in readd) {
-            const v = readd[i];
+        // go ahead and readded to array
+        while (readd.length > 0) {
+            const v = readd.pop();
             heap.add(v);
         }
         

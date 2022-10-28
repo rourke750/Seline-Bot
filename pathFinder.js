@@ -1,4 +1,5 @@
 const os = require('os');
+var _ = require('lodash');
 
 const swampCostConst = 10;
 const plainCost = 2;
@@ -8,27 +9,135 @@ for (ob in OBSTACLE_OBJECT_TYPES) {
     obsticalD[OBSTACLE_OBJECT_TYPES[ob]] = true;
 }
 
-/*
-class DualCostMatrix {
-    constructor(a, b) {
-        this.a = a;
-        this.b = b;
-    }
-
-    get(x, y) {
-        console.log('herm pathfinder')
-        let aV = this.a.get(x, y);
-        let bV = this.b.get(x, y);
-        if (aV == 0) 
-            return aB;
-        else if (bV == 0) 
-            return aV;
-        return aV > bV ? aV : bV;
-    }
-}
-*/
+let destinationMappings = {}; // room to move position to creeps
+let currentCreepMapping = {}; // room to current position to creeps
+let dirCreep = {}; // creep to dir
+let pathCreep = {}; // creep to path for drawing
 
 const pathGenerator = {
+
+    moveCreep: function(creep) {
+        const dir = dirCreep[creep.name];
+        const p = pathCreep[creep.name];
+
+        if (creep.fatigue == 0) {
+            const e = creep.move(dir);
+        }
+        if (p != null)
+            new RoomVisual(creep.room.name).poly(p, {stroke: '#fff', strokeWidth: .15,
+                opacity: .2, lineStyle: 'dashed'});
+    },
+
+    handleSolvePathsNotMoving: function(creep, oCreep, roomName) {
+        // handle moving a creep that currently isnt moving
+        const cP = oCreep.memory.current_path;
+        if (cP && cP[oCreep.room.name]) {
+            // instead of swapping spots move creep further along its path
+            oCreep.moveByPath(cP[oCreep.room.name]);
+            return false;
+        }
+        const name = oCreep.name;
+        // if creap name is not here then it is not moving lets just swap
+        const dir = this.getDirection(creep.pos.x - oCreep.pos.x, creep.pos.y - oCreep.pos.y);
+        // enter the dir for that creep
+        dirCreep[name] = dir;
+        const toPos = `${creep.pos.x}-${creep.pos.y}`;
+        const currentPos = `${oCreep.pos.x}-${oCreep.pos.y}`;
+
+        if (!(toPos in destinationMappings[roomName]))
+            destinationMappings[roomName][toPos] = {};
+
+        if (!(currentPos in currentCreepMapping[roomName]))
+            currentCreepMapping[roomName][currentPos] = {};
+
+        destinationMappings[roomName][toPos][name] = true;
+        currentCreepMapping[roomName][currentPos][name] = true;
+        return true;
+    },
+
+    solvePaths: function() {
+        for (const roomName in destinationMappings) {
+            const creepPositions = currentCreepMapping[roomName];
+            const recentlyModified = {};
+            for (const position in destinationMappings[roomName]) {
+                const array = position.split('-');
+                const x = array[0]; // next x moving to
+                const y = array[1]; // next y moving to
+                const creeps = destinationMappings[roomName][position];
+
+                for (const creepName in creeps) {
+                    if (creepName in recentlyModified)
+                        continue;
+                    const creep = Game.creeps[creepName];
+                    // todo check if there is a creep in the position we want to move to
+                    // if there is and it doesn't have a move then move it
+
+                    // todo check if where we want to move to and there is fatigue for it
+                    // if it has fatigue determine how i want to solve that, maybe wait maybe repath around it to the next location
+                    // ie if there are 3+ positions path to the position after the blocked creep
+
+                    // todo creeps can get stuck when theres only one place to go, a creep is blocking the path, and then it tries to repath
+                    // but avoid creeps but cant move since a creep is in the way
+                    // then the other creep wont switch spaces since the other creep doesnt have a path and then this one loses its path
+                    // since it cant path around as well
+
+                    // todo pull the utils code here and then determine in what situtations when to repath or not
+                    
+                    // check if there is a creep in the way that we are going to move to
+                    const c = creep.room.lookForAt(LOOK_CREEPS, parseInt(x), parseInt(y));
+                    // check if creep has a next movement, if it doesnt swap spots
+                    if (c.length && !(c[0].name in dirCreep) && c[0].my) {
+                        const oCreep = c[0];
+                        if (this.handleSolvePathsNotMoving(creep, oCreep, roomName))
+                            recentlyModified[oCreep.name] = true; // if true we swapped places add to recently modified
+                        // if we are moving further along then process it like any other creep
+                    } else if (c.length && c[0].name in dirCreep && c[0].my) {
+                        // handle the case when creep is blocking but is moving somewhere
+                        const oCreep = c[0];
+                        
+                    }
+                    // todo handle the case when creep is blocking but is moving somewhere
+                    // check for cooldown if not temp block
+                }
+            }
+            for (const position in destinationMappings[roomName]) {
+                const creeps = destinationMappings[roomName][position];
+                for (const creepName in creeps) {
+                    const creep = Game.creeps[creepName];
+                    if (!creep)
+                        console.log(creepName, 'was undefined', creep);
+                    this.moveCreep(creep);
+                }
+            }
+        }
+    },
+
+    registerCreepDst: function(creep, nextX, nextY, dir, path) {
+        const roomName = creep.pos.roomName;
+        const dstKey = `${nextX}-${nextY}`;
+        if (!(roomName in destinationMappings)) // no room name
+            destinationMappings[roomName] = {};
+        if (!(dstKey in destinationMappings[roomName])) // no dstkey
+            destinationMappings[roomName][dstKey] = {};
+
+        const curKey = `${creep.pos.x}-${creep.pos.y}`;
+        if (!(roomName in currentCreepMapping)) // no room name
+            currentCreepMapping[roomName] = {};
+        if (!(curKey in currentCreepMapping[roomName])) // no dstkey
+            currentCreepMapping[roomName][curKey] = {};
+
+        destinationMappings[roomName][dstKey][creep.name] = true;
+        currentCreepMapping[roomName][curKey][creep.name] = true;
+        dirCreep[creep.name] = dir;
+        pathCreep[creep.name] = path;
+    },
+
+    resetCreepDst: function() {
+        destinationMappings = {};
+        currentCreepMapping = {};
+        dirCreep = {};
+        pathCreep = {};
+    },
 
     find_path_in_room: function(creep, dstX, dstY, opts={maxOps:2000, avoidCreep: false}) {
         if (opts == null) {
@@ -57,6 +166,9 @@ const pathGenerator = {
                     }
                 }
             }
+            // check if there is a wall if so set range to large
+            if (range == 0 && creep.room.getTerrain().get(dstX, dstY) == TERRAIN_MASK_WALL)
+                range = 10;
         }
         
         const v = PathFinder.search(creep.pos, {'pos': new RoomPosition(dstX, dstY, creep.pos.roomName), 'range': range},
@@ -207,7 +319,8 @@ const pathGenerator = {
                 // no exit generate it
                 const v = this.findHighwayGetPath(start, dir.room);
                 if (v.incomplete) {
-                    console.log('pathFinder incomplete path when trying to find highway room: ',dir.room, JSON.stringify(v));
+                    console.log('pathFinder incomplete path when trying to find highway room: ', dir.room, 
+                    ' from ', currentRoom, JSON.stringify(v));
                     return; // exit dont want the shit path
                 }
                 const r = this.getStartAndExit(start, dir.room, v);
@@ -424,19 +537,15 @@ const pathGenerator = {
     },
 
     test: function() {
-        const opts = {};
-        opts.avoidHostile = false;
-        const route = Game.map.findRoute('W1N9', 'W1N8', {
-            routeCallback(roomToName, roomFromName) {
-                if (opts.avoidHostile && roomToName in Memory.rooms && Memory.rooms[roomToName].eCP) {
-                    return Infinity;
-                } else if (roomToName in Memory.flags.blacklist) {
-                    return Infinity;
-                }
-                return 1;
-            }
-        });
-        return JSON.stringify(route)
+        const s = Game.cpu.getUsed();
+        const d = {}
+        d['test'] = {a: 'aaaaa', b: "fsdnfjsdf"};
+        d['test2'] = {a: 'aaaaa', b: "fsdnfjsdf"};
+        d['test3'] = {a: 'aaaaa', b: "fsdnfjsdf"};
+
+        //delete d['test2']
+        
+        return Game.cpu.getUsed() - s;
     },
 
     testHighWay: function() {
@@ -453,6 +562,20 @@ const pathGenerator = {
         
     },
 
+    findRoute: function() {
+        const route = Game.map.findRoute(new RoomPosition(14, 12, 'E17N22'), 'E18N23', {
+            routeCallback(roomToName, roomFromName) {
+                if (opts.avoidHostile && roomToName in Memory.rooms && Memory.rooms[roomToName].eCP) {
+                    return Infinity;
+                } else if (roomToName in Memory.flags.blacklist) {
+                    return Infinity;
+                }
+                return 1;
+            }
+        });
+        return 'a' + JSON.stringify(route);
+    },
+
     generateThreads: function(roomName) {
         let name = 'pathFinder-' + roomName + '-build_cost_matrix';
         if (!os.existsThread(name)) {
@@ -465,3 +588,34 @@ const pathGenerator = {
     }
 };
 module.exports = pathGenerator;
+
+Creep.prototype.moveByPath = function(path) {
+    if(_.isArray(path) && path.length > 0 && (path[0] instanceof RoomPosition)) {
+        var idx = _.findIndex(path, (i) => i.isEqualTo(this.pos));
+        if(idx === -1) {
+            if(!path[0].isNearTo(this.pos)) {
+                return C.ERR_NOT_FOUND;
+            }
+        }
+        idx++;
+        if(idx >= path.length) {
+            return C.ERR_NOT_FOUND;
+        }
+
+        return this.move(this.pos.getDirectionTo(path[idx]));
+    }
+
+    if(_.isString(path)) {
+        path = Room.deserializePath(path);
+    }
+    if(!_.isArray(path)) {
+        return C.ERR_INVALID_ARGS;
+    }
+    var cur = _.find(path, (i) => i.x - i.dx == this.pos.x && i.y - i.dy == this.pos.y);
+    if(!cur) {
+        return ERR_NOT_FOUND;
+    }
+    pathGenerator.registerCreepDst(this, cur.x, cur.y, cur.direction, path);
+    //return this.move(cur.direction);
+    return 0;
+};

@@ -46,10 +46,7 @@ var militaryClaimer = {
         if (creep.spawning) {
             return;
         }
-        // todo delete below code and add if destLocNull
         if (creep.memory.destLoc == null) {
-            // todo assign to a flag that doesn't have the members
-            
             this.find_loc(creep);
         }
 
@@ -80,6 +77,7 @@ var militaryClaimer = {
         spawn.spawnCreep(build_creeps[spawn.room.memory.upgrade_pos_scout][1], newName,
             {memory: {role: 'claimer', capture: false}});
         if (Game.creeps[newName]) {
+            this.find_loc(Game.creeps[newName]);
             return Game.creeps[newName];
         }
     },
@@ -106,6 +104,10 @@ var militaryClaimer = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
     
 }

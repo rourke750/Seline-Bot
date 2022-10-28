@@ -122,6 +122,8 @@ var roleBuilder = {
         if (room.controller.level == 0) {
             return;
         }
+        if (energy_available == 0 && build_creeps[room.memory.upgrade_pos_janitor][0] == 0)
+            return;
         const current_upgrade_cost = build_creeps[room.memory.upgrade_pos_builder][2];
         if (current_upgrade_cost > energy_available) {
             // attacked need to downgrade
@@ -134,6 +136,10 @@ var roleBuilder = {
                 room.memory.upgrade_pos_builder = n[0];
             }
         }
+    },
+
+    cleanUp(id) {
+        
     }
 };
 

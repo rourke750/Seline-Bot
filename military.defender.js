@@ -12,13 +12,13 @@ const build_creeps = [
 var militaryDefender = {
 
     getEnemy: function(creep) {
-        let t = creep.pos.findClosestByPath(FIND_HOSTILE_CREEPS, {filter: function(creep) {
-            return creep.owner in Memory.allies && Memory.allies[creep.owner].enemy && struct.pos.roomName == creep.memory.tRoom;
+        let t = creep.pos.findClosestByPath(FIND_HOSTILE_CREEPS, {filter: function(eC) {
+            return eC.owner.username in Memory.allies && Memory.allies[eC.owner.username].enemy && eC.pos.roomName == creep.memory.tRoom;
         }});
         if (t == null) {
             t = creep.pos.findClosestByPath(FIND_HOSTILE_STRUCTURES, {filter: function(struct) {
                 return struct.owner.username in Memory.allies && Memory.allies[struct.owner.username].enemy 
-                && struct.pos.roomName == creep.memory.tRoom && struct.structureType != "keeperLair";
+                && struct.pos.roomName == creep.memory.tRoom && struct.structureType != "keeperLair" && struct.structureType != STRUCTURE_CONTROLLER;
             }});
         }
         if (!t) {
@@ -39,9 +39,10 @@ var militaryDefender = {
         // move to room
         if (creep.pos.roomName != creep.memory.tRoom) {
             utils.move_to(creep);
+            return
         }
 
-        if (creep.pos.roomName == creep.memory.tRoom && creep.memory.dstLoc == null) {
+        if (creep.pos.roomName == creep.memory.tRoom && creep.memory.destLoc == null) {
             creep.memory.destLoc = {x: 22, y: 22, roomName: creep.memory.tRoom};
         }
 
@@ -90,6 +91,10 @@ var militaryDefender = {
             }
         
         }
+    },
+
+    cleanUp(id) {
+        
     }
     
 }

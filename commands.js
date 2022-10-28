@@ -18,6 +18,17 @@ const commands = {
             }
         }
         console.log(JSON.stringify(r))
+    },
+
+    // global.commands.createFakeCreep('W7N4-1', 'W7N4', 29, 8)
+    createFakeCreep: function(s, room, dstX, dstY) {
+        const spawn = Game.spawns[s];
+        var newName = 'Fake' + Game.time + spawn.name.charAt(spawn.name.length - 1);
+        spawn.spawnCreep([MOVE, TOUGH, TOUGH, TOUGH], newName,
+            {memory: {role: 'fake', destLoc: {x: dstX, y: dstY, roomName: room}}});
+        if (Game.creeps[newName]) {
+            return Game.creeps[newName];
+        }
     }
 }
 
