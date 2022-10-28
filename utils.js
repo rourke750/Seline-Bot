@@ -96,6 +96,8 @@ var utils = {
     },
 
     get_creep_carry: function(body_parts) {
+        if (!body_parts)
+            return 50;
         return _.sum(body_parts.map(function (b) {
             return b == CARRY ? 50 : 0;
         }));
@@ -480,8 +482,10 @@ var utils = {
         }
         
         // below code is beginning steps if we are stuck in position, in the future we can try ask the offending creep to move out the way
-        if (creep.memory.last_pos != null && creep.pos.isEqualTo(creep.memory.last_pos.x, creep.memory.last_pos.y) 
-            && creep.fatigue == 0 && avoidCreepIfStuck && creep.memory.last_pos_time+1 == Game.time) {
+        // check if we have fatigue 0, same place as before, and the previous fatigue was also 0
+        // this should work as intended and only waste the cycle where they couldn't move which they couldnt do anyways
+        if (avoidCreepIfStuck && creep.memory.last_pos != null && creep.pos.isEqualTo(creep.memory.last_pos.x, creep.memory.last_pos.y) 
+            && creep.fatigue == 0 && creep.memory.fatigue == 0 && creep.memory.last_pos_time+1 >= Game.time) {
             // get the path we are currently traveling
             const sePath = creep.memory.current_path[creep.room.name];
             if (sePath != "" && sePath != null) {
@@ -542,6 +546,7 @@ var utils = {
             const errCode = creep.moveByPath(p);
             creep.memory.last_pos = creep.pos;
             creep.memory.last_pos_time = Game.time;
+            creep.memory.fatigue = creep.fatigue;
             if (errCode == ERR_NOT_FOUND) {
                 return;
             } else if (errCode == ERR_INVALID_ARGS) {

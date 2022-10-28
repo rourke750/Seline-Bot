@@ -32,7 +32,7 @@ var roleUpgrader = {
             if (!storage)
                 return 1;
             storage = storage.storage;
-            const carry = utils.get_creep_carry(utilscreep.scaleByEnergy([WORK, CARRY, MOVE], [WORK, CARRY, MOVE], room.energyAvailable));
+            const carry = utils.get_creep_carry(utilscreep.scaleByEnergy([WORK, CARRY, MOVE], null, room.energyCapacityAvailable));
             return Math.max(Math.min(6, storage / carry), 1);
         }
         return 2;

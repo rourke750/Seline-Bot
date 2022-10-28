@@ -9,7 +9,7 @@ var roleBuilder = {
     run: function(creep) {
         if (creep.spawning)
             return;
-        utils.move_to(creep, null, false);
+        utils.move_to(creep, null, true);
 	},
 	
 	create_creep: function(spawn) {
