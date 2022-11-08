@@ -29,8 +29,8 @@ var roleUpgrader = {
         // todo get the amount of repairs needed and spawn based on it
         if (room.controller && room.controller.my && room.controller.level < 8) {
             let storage = transport.getRoomInfo(room.name, false);
-            if (!storage)
-                return 1;
+            if (!storage) //todo work on this logic
+                return 3;
             storage = storage.storage;
             const carry = utils.get_creep_carry(utilscreep.scaleByEnergy([WORK, CARRY, MOVE], null, room.energyCapacityAvailable));
             return Math.max(Math.min(6, storage / carry), 1);

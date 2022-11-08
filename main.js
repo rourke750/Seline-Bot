@@ -369,14 +369,14 @@ function wrapWithMemoryHack(fn) {
     
         // this implementation uses the official way of saving Memory
         Memory.stats.cpu.memorySerialize = lastSerializeTime;
-        //Memory.stats.memory.size = lastMemSize;
+        Memory.stats.memory.size = lastMemSize;
         
         let s = Game.cpu.getUsed();
         const ser = JSON.stringify(Memory);
 
         // set last serialize time and mem size
         lastSerializeTime = Game.cpu.getUsed() - s;
-        //lastMemSize = new Blob([ser]).size;
+        lastMemSize = Math.floor(RawMemory.get().length / 1000);
               
         RawMemory.set(ser);
     };
