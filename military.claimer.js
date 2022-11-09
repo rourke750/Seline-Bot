@@ -56,16 +56,16 @@ var militaryClaimer = {
         
         if (creep.memory.destLoc.roomName != creep.pos.roomName) {
             
-            utils.move_to(creep, this.get_room_controller);
+            utils.move_to(creep, this.get_room_controller, true, false, {avoidHostile:true});
         } else {
             const obj = Game.getObjectById(creep.memory.destId);
             if (obj == null) {
-                utils.move_to(creep, this.get_room_controller);
+                utils.move_to(creep, this.get_room_controller, true, false, {avoidHostile:true});
             } else {
                 if (!creep.memory.capture && creep.reserveController(obj) == ERR_NOT_IN_RANGE) {
-                    utils.move_to(creep, this.get_room_controller);
+                    utils.move_to(creep, this.get_room_controller, true, false, {avoidHostile:true});
                 } else if (creep.memory.capture && creep.claimController(obj) == ERR_NOT_IN_RANGE) {
-                    utils.move_to(creep, this.get_room_controller);
+                    utils.move_to(creep, this.get_room_controller, true, false, {avoidHostile:true});
                 }
             }
         }

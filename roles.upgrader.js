@@ -72,7 +72,7 @@ var roleUpgrader = {
         if (spawn.room.controller.level == 8)
             b = rcl_8;
         else
-            b = utilscreep.scaleByEnergy([WORK, CARRY, MOVE], null, spawn.room.energyAvailable)
+            b = utilscreep.scaleByEnergy([WORK, CARRY, MOVE], null, spawn.room.energyAvailable);
         spawn.spawnCreep(b, newName,
             {memory: {role: 'upgrader', upgrading: false, home_room: spawn.room.name}});
         if (Game.creeps[newName]) {

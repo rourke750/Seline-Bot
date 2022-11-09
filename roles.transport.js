@@ -3,9 +3,6 @@ const utilsCreep = require('utilscreep');
 const utils = require('utils');
 const common = require('common');
 
-const normal_creep = [CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY, CARRY,
-                    MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE, MOVE];
-
 const roleTransport = {
     
     run: function(creep) {
@@ -94,7 +91,10 @@ const roleTransport = {
             return
         }
         var newName = 'Transport' + Game.time + spawn.name.charAt(spawn.name.length - 1);
-        spawn.spawnCreep(normal_creep, newName,
+        const b = utilscreep.scaleByEnergy([CARRY, MOVE], 
+            [CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE], 
+            spawn.room.energyAvailable);
+        spawn.spawnCreep(b, newName,
             {memory: {role: common.creepRole.TRANSPORT, pickup: true, sourceId: sourceId, home_room: home_room}});
         if (Game.creeps[newName]) {
             if (sourceId == null && home_room == null) {

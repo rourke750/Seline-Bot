@@ -36,7 +36,7 @@ const military = {
                 }
                 if (!Memory.allies[attackerOwner].enemy) {
                     // has just become our enemy
-                    Game.notify('We have just been attacked by', attackerOwner, 'they are now our enemy!');
+                    Game.notify('We have just been attacked by ' + attackerOwner + ' they are now our enemy!');
                 }
                 Memory.allies[attackerOwner].enemy = true;
             }
@@ -100,17 +100,19 @@ const military = {
         let totalHealth = 0;
         let totalMelee = 0;
         let totalRange = 0;
+        const hostileNames = {};
         for (const k in hostileCreeps) {
             const c = hostileCreeps[k];
             totalHealth += c.hits;
             totalMelee += c.getActiveBodyparts(ATTACK);
             totalRange += c.getActiveBodyparts(RANGED_ATTACK);
+            hostileNames[c.owner.username] = true;
         }
         for (const k in hostileStructs) {
             const c = hostileStructs[k];
             totalHealth += c.hits;
         }
-        return [totalHealth, totalMelee, totalRange];
+        return [totalHealth, totalMelee, totalRange, hostileNames];
     },
 
     findHostilesFromRoomData: function() {

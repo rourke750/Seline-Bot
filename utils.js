@@ -425,11 +425,11 @@ var utils = {
         return [obj.pos.x, obj.pos.y, obj.pos.roomName];
     },
     
-    initialize_traverse_rooms: function(creep, dstRoom) {
+    initialize_traverse_rooms: function(creep, dstRoom, opts) {
         // initialize traverse room, ie get path and other logic
         creep.memory.dstRoom = dstRoom
         // find highway traversal
-        const pFind = pathFinder.find_highway(creep.pos, dstRoom);
+        const pFind = pathFinder.find_highway(creep.pos, dstRoom, opts);
         if (pFind == null) {
             return;
         }
@@ -454,8 +454,11 @@ var utils = {
         delete creep.memory.dstRoomPath; // it is no longer needed get rid of it
     },
     
-    move_to: function(creep, newRoomFunc=null, avoidCreepIfStuck=true, pickNewTargetIfStuck=false) {
+    move_to: function(creep, newRoomFunc=null, avoidCreepIfStuck=true, pickNewTargetIfStuck=false, opts={}) {
         // hanldes destinations even in other rooms
+
+        opts.avoidHostile = opts.avoidHostile || false;
+
         const v = this.move_to_helper(creep);
         if (v == null) {
             //console.log('utils creep ' + creep.name + ' has null destination, quitting');
@@ -465,7 +468,7 @@ var utils = {
             
             if (v[2] != creep.pos.roomName) {
                 // not same room handle traverse room logic
-                this.initialize_traverse_rooms(creep, v[2]);
+                this.initialize_traverse_rooms(creep, v[2], opts);
             } else {
                 // we are in the same room lets get a path
                 creep.memory.current_path = {};
