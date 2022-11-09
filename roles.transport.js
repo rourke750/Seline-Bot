@@ -32,7 +32,8 @@ const roleTransport = {
         if (creep.memory.pickup && !creep.memory.destId) {
             //todo check if we have a sourceid already picked
             // we want to pickup but our dest id is null lets request
-            transport.requestCanTransportWork(creep);
+            if (transport.requestCanTransportWork(creep))
+                utilsCreep.setLastTicked(creep.name, creep.memory.sourceId, creep.memory.destLoc.roomName);
         }
 
         let findDropOff = null;
@@ -98,7 +99,8 @@ const roleTransport = {
             {memory: {role: common.creepRole.TRANSPORT, pickup: true, sourceId: sourceId, home_room: home_room}});
         if (Game.creeps[newName]) {
             if (sourceId == null && home_room == null) {
-                transport.requestCanTransportWork(Game.creeps[newName]);
+                if (transport.requestCanTransportWork(Game.creeps[newName]))
+                    utilsCreep.setLastTicked(newName, Game.creeps[newName].memory.sourceId, Game.creeps[newName].memory.destLoc.roomName);
             }
             return Game.creeps[newName];
         }

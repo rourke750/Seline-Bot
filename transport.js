@@ -93,6 +93,7 @@ const transport = {
                         console.log('transport err with getcontainer ', creep.pos, oRoom, sourceId)
                     }
                     if (energyWant + sourceWant < container.store.getUsedCapacity(RESOURCE_ENERGY)) {
+                        //console.log('source id', sourceId, sourceWant, 'energy want', energyWant, creep.name)
                         creep.memory.destId = containerId;
                         creep.memory.destLoc = {roomName: oRoom};
                         creep.memory.sourceId = sourceId; 
