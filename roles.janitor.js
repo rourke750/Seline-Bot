@@ -229,7 +229,7 @@ const roleJanitor = {
 	
 	create_creep: function(spawn) {
         var newName = 'Janitor' + Game.time + spawn.name.charAt(spawn.name.length - 1);
-        const b = utilscreep.scaleByEnergy([WORK, CARRY, MOVE], null, spawn.room.energyAvailable);
+        const b = utilscreep.scaleByEnergy([WORK, CARRY, MOVE], null, spawn.room.energyAvailable, 9);
         spawn.spawnCreep(b, newName,
             {memory: {role: common.creepRole.JANITOR, collecting: true, home_room: spawn.room.name}});
         if (Game.creeps[newName]) {

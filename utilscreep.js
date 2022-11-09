@@ -129,7 +129,7 @@ var utilscreep = {
         return id in previous_creep_ids;
     },
 
-    scaleByEnergy: function(array, singleAddons, roomEnergy) {
+    scaleByEnergy: function(array, singleAddons, roomEnergy, maxParts=50) {
         const newArray = [];
         let totalEnergy = 0;
         let count = 0;
@@ -155,7 +155,7 @@ var utilscreep = {
         }
 
         // now energyRow has how much it costs per row to do
-        while(count + countRow <= 50 && totalEnergy + energyRow < roomEnergy) {
+        while(count + countRow <= 50 && totalEnergy + energyRow < roomEnergy && count < maxParts) {
             newArray.push(...array);
             count += countRow;
             totalEnergy += energyRow;
