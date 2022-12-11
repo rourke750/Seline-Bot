@@ -298,6 +298,7 @@ function exportStats() {
       os: os.getStats(),
       heap: {},
       memory: {},
+      pathFinding: pathFinder.getStats(),
     };
   
     Memory.stats.time = Game.time;

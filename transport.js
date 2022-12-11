@@ -39,7 +39,10 @@ const transport = {
         return roomInfo[name];
     },
 
-    getTransportWant: function(rooms) {
+    /**
+     * Return the amount of available containers for remote mining
+     */
+    getContainersAvailableForRemoteHarvest: function(rooms) {
         // todo come back here and make this more dynamic
         let want = 0;
         for (const k in rooms) {
@@ -113,8 +116,8 @@ const transport = {
     },
 
     /**
-     * This method is used to calculate how many transports are needed to move energy around
-     * and for which room they should be created in.
+     * Right now this method just builds mappings of room to container, container to source and source to container.
+     * It is then used later for seeing if a room can be remote mined
     */
     calculateRemoteHarvesting() {
         // lets pull up the container mapping in roles.canHarvester
@@ -162,6 +165,9 @@ const transport = {
         */
     },
 
+    /**
+     * Handles calculating energy requirements for each room their needs and what they have already
+     */
     handleTransportRooms: function(room) {
         let have = room.energyAvailable;
         let total = room.energyCapacityAvailable;
@@ -193,17 +199,28 @@ const transport = {
         roomInfo[room.name].total = total;
         roomInfo[room.name].have = have;
         roomInfo[room.name].storage = storageTotal;
+    },
+
+    assignRemotesToRooms: function() {
+        /* todo 
+        can go through roomToContainerMapping for remote rooms
+        can then go through the rooms that exit it and see which needs it more or something and
+        build the list like that
+        then once a room is claimed I can make it so another room can't use it
+        */
     }
 };
 
 const f = function() {
     for (const k in Game.rooms) {
+        // go through our rooms and see if we own them if we do add their energy to calculation
         const room = Game.rooms[k];
         if (!room.controller || !room.controller.my)
             continue;
         transport.handleTransportRooms(room);
     }
-    transport.calculateRemoteHarvesting();
+    transport.calculateRemoteHarvesting(); // calculate room wants
+    transport.assignRemotesToRooms(); // calculate remotes and assign them to rooms
 };
 
 os.newThread('transport-energy-management', f, 10);

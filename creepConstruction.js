@@ -300,7 +300,7 @@ var creepConstruction = {
             let total = utilscreep.get_role_home_filtered_creeps(roomName, common.creepRole.TRANSPORT).length;
             
             // get numbers of how many we want from neighboring rooms
-            let want = transport.getTransportWant(exits);
+            let want = transport.getContainersAvailableForRemoteHarvest(exits);
 
             // now try figure out how many to spawn
 
@@ -312,7 +312,7 @@ var creepConstruction = {
                 continue;
             for (const sK in spawnsMapping[roomName]) {
                 const spawn = spawnsMapping[roomName][sK];
-                const newCreep = roleTransport.create_creep(spawn);
+                const newCreep = roleTransport.create_creep(spawn, roomName);
                 if (newCreep) {
                     utilscreep.add_creep(newCreep);
                     total += 1;

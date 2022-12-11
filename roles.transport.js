@@ -86,22 +86,14 @@ const roleTransport = {
         }
 	},
 	
-	create_creep: function(spawn, sourceId=undefined, home_room=undefined) {
-        if ((!sourceId && home_room) || (sourceId && !home_room)) {
-            console.log('transport sourceid and home_room both have to be set if one or the other');
-            return
-        }
+	create_creep: function(spawn, home_room=undefined) {
         var newName = 'Transport' + Game.time + spawn.name.charAt(spawn.name.length - 1);
         const b = utilscreep.scaleByEnergy([CARRY, MOVE], 
             [CARRY, CARRY, CARRY, CARRY, CARRY, MOVE, MOVE, MOVE, MOVE, MOVE], 
             spawn.room.energyAvailable);
         spawn.spawnCreep(b, newName,
-            {memory: {role: common.creepRole.TRANSPORT, pickup: true, sourceId: sourceId, home_room: home_room}});
+            {memory: {role: common.creepRole.TRANSPORT, pickup: true, home_room: home_room}});
         if (Game.creeps[newName]) {
-            if (sourceId == null && home_room == null) {
-                if (transport.requestCanTransportWork(Game.creeps[newName]))
-                    utilsCreep.setLastTicked(newName, Game.creeps[newName].memory.sourceId, Game.creeps[newName].memory.destLoc.roomName);
-            }
             return Game.creeps[newName];
         }
     },
